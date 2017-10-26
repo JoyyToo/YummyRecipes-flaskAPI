@@ -1,0 +1,17 @@
+language:
+  - "python"
+
+python:
+  - "3.6"
+
+install:
+  - "pip install -r requirements.txt"
+  - "pip install coveralls"
+
+script:
+  - "source .env"
+  - "nosetests --with-coverage --cover-package=tests --cover-package=app
+ && coverage report"
+
+after_success:
+  - "coveralls"
