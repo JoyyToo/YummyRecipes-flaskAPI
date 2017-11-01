@@ -1,18 +1,14 @@
 import os
 from flask import Flask
-from flask_api import FlaskAPI
+from flask_restplus import Api, Resource
 from flask_sqlalchemy import SQLAlchemy
 
 from instance.config import app_config
-from app.models import User, Categories, Recipes
 
 app = Flask(__name__)
-
+app.config.from_object(app_config[os.getenv('APP_SETTINGS')])
+api = Api(app)
 db = SQLAlchemy(app)
 
-app.config.from_object(app_config[os.getenv('staging')])
-
-
-
-
+from . import views
 
