@@ -11,4 +11,3 @@ api = Api(app)
 db = SQLAlchemy(app)
 
 from . import views
-
