@@ -68,10 +68,16 @@ class Users(db.Model):
             return payload['sub']
         except jwt.ExpiredSignatureError:
             # token is valid but expired
-            return "Expired token. Please login to get a new token"
+            return {
+                       "message": "Expired token. Please login to get a new token",
+                       "status": "error"
+                   }, 403
         except jwt.InvalidTokenError:
             # token is invalid
-            return "Invalid token. Please register or login"
+            return {
+                       "message": "Invalid token. Please register or login",
+                       "status": "error"
+                   }, 403
 
 
 class Categories(db.Model):
@@ -102,6 +108,7 @@ class Categories(db.Model):
         category.name = name
         category.desc = desc
         category.save()
+        return category
 
     def save(self):
         """Saves Category to the database"""
@@ -228,3 +235,4 @@ class Sessions(db.Model):
             status = session.is_logged_in
             return status
         return False
+
