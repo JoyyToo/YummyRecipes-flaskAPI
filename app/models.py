@@ -68,10 +68,16 @@ class Users(db.Model):
             return payload['sub']
         except jwt.ExpiredSignatureError:
             # token is valid but expired
-            return "Expired token. Please login to get a new token"
+            return {
+                       "message": "Expired token. Please login to get a new token",
+                       "status": "error"
+                   }, 403
         except jwt.InvalidTokenError:
             # token is invalid
-            return "Invalid token. Please register or login"
+            return {
+                       "message": "Invalid token. Please register or login",
+                       "status": "error"
+                   }, 403
 
 
 class Categories(db.Model):
@@ -87,6 +93,8 @@ class Categories(db.Model):
         db.DateTime, default=db.func.current_timestamp(),
         onupdate=db.func.current_timestamp())
     user_id = db.Column(db.Integer, db.ForeignKey(Users.id))
+    recipes = db.relationship(
+        'Recipes', order_by='Recipes.id', cascade='all, delete-orphan')
 
     def __init__(self, name, desc, user_id):
         """Initialize Categories with name, desc and user_id"""
@@ -100,6 +108,7 @@ class Categories(db.Model):
         category.name = name
         category.desc = desc
         category.save()
+        return category
 
     def save(self):
         """Saves Category to the database"""
@@ -124,3 +133,110 @@ class Categories(db.Model):
     def __repr__(self):
         """Returns a representation of a Category."""
         return "<Category: {}>".format(self.name)
+
+
+class Recipes(db.Model):
+    """This class defines recipes table"""
+
+    __tablename__ = "recipes"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(256))
+    time = db.Column(db.String(256))
+    ingredients = db.Column(db.String(256))
+    direction = db.Column(db.String(256))
+    category_id = db.Column(db.Integer, db.ForeignKey(Categories.id))
+    date_created = db.Column(db.DateTime, default=db.func.current_timestamp())
+    date_modified = db.Column(
+        db.DateTime, default=db.func.current_timestamp(),
+        onupdate=db.func.current_timestamp())
+
+    def __init__(self, name, time, ingredients, direction, category_id):
+        """Initialize Recipes with name, time, ingredient, direction, category_id"""
+
+        self.name = name
+        self.time = time
+        self.ingredients = ingredients
+        self.direction = direction
+        self.category_id = category_id
+
+    def save(self):
+        """Saves Recipes to the database"""
+        db.session.add(self)
+        db.session.commit()
+
+    @staticmethod
+    def update(name, time, ingredients, direction, _id):
+        """Updates an existing recipe"""
+        recipe = Recipes.query.filter_by(id=_id).first()
+        recipe.name = name
+        recipe.time = time
+        recipe.ingredients = ingredients
+        recipe.direction = direction
+        recipe.save()
+        return recipe
+
+    def delete(self):
+        db.session.delete(self)
+        db.session.commit()
+
+    @staticmethod
+    def get_all(category_id):
+        """Returns all recipes belonging to a Category"""
+        return Recipes.query.filter_by(category_id=category_id).all()
+
+    @staticmethod
+    def get_single(_id):
+        """Returns a single recipe by with id = _id"""
+        return Recipes.query.filter_by(id=_id).first()
+
+    def __repr__(self):
+        """Returns an instance of Recipe"""
+        return "<Recipe: {}>".format(self.id)
+
+
+class Sessions(db.Model):
+    """This class defines the session table"""
+
+    __tablename__ = "sessions"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, unique=True)
+    is_logged_in = db.Column(db.Boolean, default=False)
+
+    def __init__(self, user_id):
+        self.user_id = user_id
+
+    def save(self):
+        db.session.add(self)
+        db.session.commit()
+
+    @staticmethod
+    def login(user_id):
+        session = Sessions.query.filter_by(user_id=user_id).first()
+        if session:
+            session.is_logged_in = True
+            session.save()
+            return True
+        return False
+
+    @staticmethod
+    def logout(user_id):
+        session = Sessions.query.filter_by(user_id=user_id).first()
+        if session:
+            session.is_logged_in = False
+            session.save()
+            return True
+        return False
+
+    @staticmethod
+    def login_status(user_id):
+        session = Sessions.query.filter_by(user_id=user_id).first()
+        if session:
+            status = session.is_logged_in
+            return status
+<<<<<<< HEAD
+        return False
+
+=======
+        return False
+>>>>>>> 88eb82cb6b3f1f7f6136208a75627d02907028f4
