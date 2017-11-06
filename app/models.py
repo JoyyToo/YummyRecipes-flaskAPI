@@ -234,5 +234,9 @@ class Sessions(db.Model):
         if session:
             status = session.is_logged_in
             return status
+<<<<<<< HEAD
         return False
 
+=======
+        return False
+>>>>>>> 88eb82cb6b3f1f7f6136208a75627d02907028f4
