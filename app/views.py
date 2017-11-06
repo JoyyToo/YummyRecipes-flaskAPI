@@ -2,7 +2,7 @@ from functools import wraps
 
 from flask import request, jsonify, abort, json
 
-from app import api, Resource
+from app import api, Resource, reqparse
 from app.models import Users, Categories, Recipes, Sessions
 
 
@@ -405,7 +405,7 @@ class UserRecipes(Resource):
                 "status": "success",
                 "recipe": obj
             })
-            response.status_code = 200
+            response.status_code = 201
             return response
         response = jsonify({
             "message": "Name or time or ingredients or direction cannot be empty",
