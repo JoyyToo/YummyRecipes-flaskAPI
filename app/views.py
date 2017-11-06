@@ -2,11 +2,7 @@ from functools import wraps
 
 from flask import request, jsonify, abort, json
 
-<<<<<<< HEAD
 from app import api, Resource, reqparse
-=======
-from app import api, Resource
->>>>>>> 88eb82cb6b3f1f7f6136208a75627d02907028f4
 from app.models import Users, Categories, Recipes, Sessions
 
 
@@ -409,11 +405,8 @@ class UserRecipes(Resource):
                 "status": "success",
                 "recipe": obj
             })
-<<<<<<< HEAD
+
             response.status_code = 201
-=======
-            response.status_code = 200
->>>>>>> 88eb82cb6b3f1f7f6136208a75627d02907028f4
             return response
         response = jsonify({
             "message": "Name or time or ingredients or direction cannot be empty",
@@ -482,8 +475,5 @@ class UserRecipes(Resource):
             "status": "error"
         })
         response.status_code = 401
-<<<<<<< HEAD
         return response
-=======
-        return response
->>>>>>> 88eb82cb6b3f1f7f6136208a75627d02907028f4
+
