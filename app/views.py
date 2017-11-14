@@ -58,6 +58,20 @@ class UserRegistration(Resource):
                 password = args['password']
 
                 user = Users(email=email, username=username, password=password)
+                if len(password) < 6:
+                    if not email and username and password:
+                        response = jsonify({
+                            "message": "Please fill all fields",
+                            "status": "error"
+                        })
+                        response.status_code = 400
+                        return response
+                    response = jsonify({
+                        "message": "Password must be more than 6 characters.",
+                        "status": "error"})
+                    response.status_code = 301
+                    return response
+
                 user.save()
                 session = Sessions(user.id)
                 session.save()
@@ -125,7 +139,7 @@ class UserLogin(Resource):
                 return response
         except Exception as e:
             response = jsonify({
-                "message": "Invalid email or password, Please try again",
+                "message": str(e),
                 "status": "error"
             })
             response.status_code = 500
@@ -213,39 +227,50 @@ class UserCategories(Resource):
         return response
 
     @api.expect(category_parser)
-    def post(self, user_id):
+    def post(self, user_id, _id=None):
         """Handles adding a new category [ENDPOINT] POST /category"""
         post_data = category_parser.parse_args()
 
-        if post_data:
-            name = post_data['name']
-            desc = post_data['desc']
+        category = Categories.query.filter_by(name=post_data['name']).first()
 
-            if name and desc:
-                category = Categories(name=name, desc=desc, user_id=user_id)
-                category.save()
-                obj = {
-                    "id": category.id,
-                    "name": category.name,
-                    "desc": category.desc,
-                    "date_created": category.date_created,
-                    "date_modified": category.date_modified,
-                    "user_id": category.user_id
-                }
+        if not category:
 
-                response = jsonify({
-                    "message": "Category added successfully",
-                    "status": "success",
-                    "category": obj
-                })
-                response.status_code = 201
-                return response
-        response = jsonify({
-            "message": "Name or description cannot be empty",
-            "status": "error"
-        })
-        response.status_code = 400
-        return response
+            if post_data:
+                name = post_data['name']
+                desc = post_data['desc']
+
+                if name and desc:
+                    category = Categories(name=name, desc=desc, user_id=user_id)
+                    category.save()
+                    obj = {
+                        "id": category.id,
+                        "name": category.name,
+                        "desc": category.desc,
+                        "date_created": category.date_created,
+                        "date_modified": category.date_modified,
+                        "user_id": category.user_id
+                    }
+
+                    response = jsonify({
+                        "message": "Category added successfully",
+                        "status": "success",
+                        "category": obj
+                    })
+                    response.status_code = 201
+                    return response
+            response = jsonify({
+                "message": "Name or description cannot be empty",
+                "status": "error"
+            })
+            response.status_code = 400
+            return response
+        else:
+            response = jsonify({
+                "message": "Category already exists",
+                "status": "error"
+            })
+            response.status_code = 400
+            return response
 
     @api.expect(category_parser)
     def put(self, user_id, _id):
@@ -325,7 +350,9 @@ class UserRecipes(Resource):
         """Gets all Recipes or a single recipe by id [ENDPOINT] GET /category/<int:category_id>/recipes/<int:_id> """
 
         if not _id:
+
             recipes = Recipes.get_all(category_id)
+
             if recipes:
                 all_recipe = []
                 for recipe in recipes:
@@ -354,24 +381,31 @@ class UserRecipes(Resource):
             return response
         recipe = Recipes.get_single(_id)
         if recipe:
-            obj = {
-                "id": recipe.id,
-                "name": recipe.name,
-                "time": recipe.time,
-                "ingredients": recipe.ingredients,
-                "direction": recipe.direction,
-                "category_id": recipe.category_id,
-                "date_created": recipe.date_created,
-                "date_modified": recipe.date_modified,
-            }
+            if recipe:
+                obj = {
+                    "id": recipe.id,
+                    "name": recipe.name,
+                    "time": recipe.time,
+                    "ingredients": recipe.ingredients,
+                    "direction": recipe.direction,
+                    "category_id": recipe.category_id,
+                    "date_created": recipe.date_created,
+                    "date_modified": recipe.date_modified,
+                }
+                response = jsonify({
+                    "recipes": obj,
+                    "status": "success"
+                })
+                response.status_code = 200
+                return response
             response = jsonify({
-                "recipes": obj,
-                "status": "success"
+                "message": "Recipe not available at the moment",
+                "status": "error"
             })
-            response.status_code = 200
+            response.status_code = 401
             return response
         response = jsonify({
-            "message": "Recipe not available at the moment",
+            "message": "Category does not exist",
             "status": "error"
         })
         response.status_code = 401
