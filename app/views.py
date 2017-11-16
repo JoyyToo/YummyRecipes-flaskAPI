@@ -57,31 +57,34 @@ class UserRegistration(Resource):
                 username = args['username']
                 password = args['password']
 
-                user = Users(email=email, username=username, password=password)
-                if len(password) < 6:
-                    if not email and username and password:
+                if email and username and password:
+
+                    if len(password) < 6:
                         response = jsonify({
-                            "message": "Please fill all fields",
-                            "status": "error"
-                        })
+                            "message": "Password must be more than 6 characters.",
+                            "status": "error"})
                         response.status_code = 400
                         return response
+
+                    user = Users(email=email, username=username, password=password)
+                    user.save()
+                    session = Sessions(user.id)
+                    session.save()
+
                     response = jsonify({
-                        "message": "Password must be more than 6 characters.",
-                        "status": "error"})
-                    response.status_code = 301
+                        "message": "You registered successfully. Please log in.",
+                        "status": "success"
+                    })
+                    response.status_code = 201
+                    return response
+                else:
+                    response = jsonify({
+                        "message": "Please fill all fields",
+                        "status": "error"
+                    })
+                    response.status_code = 400
                     return response
 
-                user.save()
-                session = Sessions(user.id)
-                session.save()
-
-                response = jsonify({
-                    "message": "You registered successfully. Please log in.",
-                    "status": "success"
-                })
-                response.status_code = 201
-                return response
             except Exception as e:
                 # Error occured during registration, return error
                 response = jsonify({
@@ -96,7 +99,7 @@ class UserRegistration(Resource):
                 "message": "User already exists. Please login",
                 "status": "error"
             })
-            response.status_code = 202
+            response.status_code = 409
 
             return response
 
@@ -162,20 +165,29 @@ class UserLogout(Resource):
         return response
 
 
+category_get_parser = api.parser()
 category_parser = api.parser()
+category_get_parser.add_argument('q', type=str, help='Search')
 category_parser.add_argument('name', type=str, help='Category name', location='form', required=True)
 category_parser.add_argument('desc', type=str, help='Category Description', location='form', required=True)
 
 
-@api.route('/category')
-@api.route('/category/<int:_id>')
+@api.route('/category', methods=['GET', 'POST'])
+@api.route('/category/<int:_id>', methods=['GET', 'PUT', 'DELETE'])
 class UserCategories(Resource):
     method_decorators = [token_required]
 
+    @api.doc(parser=category_get_parser)
     def get(self, user_id, _id=None):
         """Gets all categories or a single category by id [ENDPOINT] GET /category and GET /category/<id>"""
-        if not _id:
+        args = category_get_parser.parse_args()
+        q = args['q']
 
+        if q:
+            categories = api.models.categories.query. \
+                filter(api.models.categories.name.like('%' + q + '%'))
+
+        if not _id:
             cat = Categories.get_all(user_id).all()
             if cat:
                 categories = []
@@ -297,7 +309,7 @@ class UserCategories(Resource):
                     "status": "success",
                     "category": obj
                 })
-                response.status_code = 201
+                response.status_code = 200
                 return response
 
             response = jsonify({
@@ -330,24 +342,33 @@ class UserCategories(Resource):
             "message": "Category does not exist",
             "status": "error"
         })
-        response.status_code = 200
+        response.status_code = 401
         return response
 
 
 recipe_parser = api.parser()
+recipe_get_parser = api.parser()
+recipe_get_parser.add_argument('q', type=str, help='Search')
 recipe_parser.add_argument('name', type=str, help='Recipe name', location='form', required=True)
 recipe_parser.add_argument('time', type=str, help='Expected time', location='form', required=True)
 recipe_parser.add_argument('ingredients', type=str, help='Ingredients', location='form', required=True)
 recipe_parser.add_argument('direction', type=str, help='Directions', location='form', required=True)
 
 
-@api.route('/category/<int:category_id>/recipes')
-@api.route('/category/<int:category_id>/recipes/<int:_id>')
+@api.route('/category/<int:category_id>/recipes', methods=['GET', 'POST'])
+@api.route('/category/<int:category_id>/recipes/<int:_id>', methods=['GET', 'PUT', 'DELETE'])
 class UserRecipes(Resource):
     method_decorators = [token_required]
 
+    @api.doc(parser=recipe_get_parser)
     def get(self, user_id, category_id, _id=None):
         """Gets all Recipes or a single recipe by id [ENDPOINT] GET /category/<int:category_id>/recipes/<int:_id> """
+        args = category_get_parser.parse_args()
+        q = args['q']
+
+        if q:
+            recipes = api.models.recipes.query. \
+                filter(api.models.recipes.name.like('%' + q + '%'))
 
         if not _id:
 
