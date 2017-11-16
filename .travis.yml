@@ -4,13 +4,21 @@ language:
 python:
   - "2.7"
 
+services:
+  - "postgresql"
+
 install:
+  - "pip install flask-sqlalchemy"
   - "pip install -r requirements.txt"
   - "pip install coveralls"
 
+before_script:
+  - "psql -c 'CREATE DATABASE test_db;' -U postgres"
+  - "psql -c 'CREATE DATABASE flask_api_yummy ;' -U postgres"
+
 script:
   - "source .env.sample"
-  - "nosetests --with-coverage --cover-package=tests --cover-package=app
+  - "nosetests --with-coverage -v --cover-package=tests --cover-package=app
  && coverage report"
 
 after_success:
