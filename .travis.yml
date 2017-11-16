@@ -9,7 +9,7 @@ install:
   - "pip install coveralls"
 
 script:
-  - "source .env"
+  - "source .env.sample"
   - "nosetests --with-coverage --cover-package=tests --cover-package=app
  && coverage report"
 
