@@ -57,31 +57,34 @@ class UserRegistration(Resource):
                 username = args['username']
                 password = args['password']
 
-                user = Users(email=email, username=username, password=password)
-                if len(password) < 6:
-                    if not email and username and password:
+                if email and username and password:
+
+                    if len(password) < 6:
                         response = jsonify({
-                            "message": "Please fill all fields",
-                            "status": "error"
-                        })
+                            "message": "Password must be more than 6 characters.",
+                            "status": "error"})
                         response.status_code = 400
                         return response
+
+                    user = Users(email=email, username=username, password=password)
+                    user.save()
+                    session = Sessions(user.id)
+                    session.save()
+
                     response = jsonify({
-                        "message": "Password must be more than 6 characters.",
-                        "status": "error"})
-                    response.status_code = 301
+                        "message": "You registered successfully. Please log in.",
+                        "status": "success"
+                    })
+                    response.status_code = 201
+                    return response
+                else:
+                    response = jsonify({
+                        "message": "Please fill all fields",
+                        "status": "error"
+                    })
+                    response.status_code = 400
                     return response
 
-                user.save()
-                session = Sessions(user.id)
-                session.save()
-
-                response = jsonify({
-                    "message": "You registered successfully. Please log in.",
-                    "status": "success"
-                })
-                response.status_code = 201
-                return response
             except Exception as e:
                 # Error occured during registration, return error
                 response = jsonify({
@@ -96,7 +99,7 @@ class UserRegistration(Resource):
                 "message": "User already exists. Please login",
                 "status": "error"
             })
-            response.status_code = 202
+            response.status_code = 409
 
             return response
 
