@@ -165,20 +165,29 @@ class UserLogout(Resource):
         return response
 
 
+category_get_parser = api.parser()
 category_parser = api.parser()
+category_get_parser.add_argument('q', type=str, help='Search')
 category_parser.add_argument('name', type=str, help='Category name', location='form', required=True)
 category_parser.add_argument('desc', type=str, help='Category Description', location='form', required=True)
 
 
-@api.route('/category')
-@api.route('/category/<int:_id>')
+@api.route('/category', methods=['GET', 'POST'])
+@api.route('/category/<int:_id>', methods=['GET', 'PUT', 'DELETE'])
 class UserCategories(Resource):
     method_decorators = [token_required]
 
+    @api.doc(parser=category_get_parser)
     def get(self, user_id, _id=None):
         """Gets all categories or a single category by id [ENDPOINT] GET /category and GET /category/<id>"""
-        if not _id:
+        args = category_get_parser.parse_args()
+        q = args['q']
 
+        if q:
+            categories = api.models.categories.query. \
+                filter(api.models.categories.name.like('%' + q + '%'))
+
+        if not _id:
             cat = Categories.get_all(user_id).all()
             if cat:
                 categories = []
@@ -300,7 +309,7 @@ class UserCategories(Resource):
                     "status": "success",
                     "category": obj
                 })
-                response.status_code = 201
+                response.status_code = 200
                 return response
 
             response = jsonify({
@@ -333,24 +342,33 @@ class UserCategories(Resource):
             "message": "Category does not exist",
             "status": "error"
         })
-        response.status_code = 200
+        response.status_code = 401
         return response
 
 
 recipe_parser = api.parser()
+recipe_get_parser = api.parser()
+recipe_get_parser.add_argument('q', type=str, help='Search')
 recipe_parser.add_argument('name', type=str, help='Recipe name', location='form', required=True)
 recipe_parser.add_argument('time', type=str, help='Expected time', location='form', required=True)
 recipe_parser.add_argument('ingredients', type=str, help='Ingredients', location='form', required=True)
 recipe_parser.add_argument('direction', type=str, help='Directions', location='form', required=True)
 
 
-@api.route('/category/<int:category_id>/recipes')
-@api.route('/category/<int:category_id>/recipes/<int:_id>')
+@api.route('/category/<int:category_id>/recipes', methods=['GET', 'POST'])
+@api.route('/category/<int:category_id>/recipes/<int:_id>', methods=['GET', 'PUT', 'DELETE'])
 class UserRecipes(Resource):
     method_decorators = [token_required]
 
+    @api.doc(parser=recipe_get_parser)
     def get(self, user_id, category_id, _id=None):
         """Gets all Recipes or a single recipe by id [ENDPOINT] GET /category/<int:category_id>/recipes/<int:_id> """
+        args = category_get_parser.parse_args()
+        q = args['q']
+
+        if q:
+            recipes = api.models.recipes.query. \
+                filter(api.models.recipes.name.like('%' + q + '%'))
 
         if not _id:
 
