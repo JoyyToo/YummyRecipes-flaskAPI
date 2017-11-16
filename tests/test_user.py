@@ -54,6 +54,20 @@ class TestUserAuth(BaseTestCase):
         req = self.client().post('api/v1/auth/login', data=self.wrong_user)
         self.assertIn("Invalid email or password, Please try again", req.data)
 
+    def test_for_user_logout(self):
+        """Tests for correct user logout."""
+        self.client().post('api/v1/auth/register', data=self.user)
+        req = self.client().post('api/v1/auth/login', data=self.user)
+
+        jwt_token = json.loads(req.data.decode())['jwt_token']
+
+        req = self.client().get(
+            'api/v1/auth/logout',
+            headers=dict(Authorization="Bearer " + jwt_token),
+            data=self.user)
+        self.assertIn("You logged out successfully.", req.data)
+        self.assertEqual(req.status_code, 200)
+
 
 if __name__ == 'main':
     unittest.main()
