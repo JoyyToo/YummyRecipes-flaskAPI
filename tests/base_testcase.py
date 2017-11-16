@@ -20,11 +20,12 @@ class BaseTestCase(unittest.TestCase):
         self.user = {'email': self.fake.email(), 'username': self.fake.name(), 'password':  self.fake.name()}
         self.wrong_user = {'name': 'testuser_wrong', 'email': self.fake.email(),
                            'password': 'testuser_wrong'}
+        with app.app_context():
 
-        db.create_all()
-        user = Users(username="test_user", email=self.fake.email(), password="test_password")
-        db.session.add(user)
-        db.session.commit()
+            db.create_all()
+            user = Users(username="test_user", email=self.fake.email(), password="test_password")
+            db.session.add(user)
+            db.session.commit()
 
     def tearDown(self):
         db.session.remove()
