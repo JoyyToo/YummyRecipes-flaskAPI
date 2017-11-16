@@ -1,10 +1,11 @@
-import os, unittest, json
+from flask import json
+import os
 from app import app, db
-
 from instance.config import app_config
+from tests.base_testcase import BaseTestCase
 
 
-class CategoriesTestCase(unittest.TestCase):
+class CategoriesTestCase(BaseTestCase):
     def setUp(self):
         """Define test variables and initialize app."""
         self.app = app.config.from_object(app_config[os.getenv('APP_SETTINGS')])
@@ -18,17 +19,5 @@ class CategoriesTestCase(unittest.TestCase):
 
     def test_category_creation(self):
         """Test API can create a category (POST request)"""
-        res = self.client().post('/category/', data=self.category)
-        self.assertEqual(res.status_code, 201)
-        self.assertIn('Dessert', str(res.data))
+        pass
 
-    def tearDown(self):
-        """teardown all initialized variables."""
-        with app.app_context():
-            # drop all tables
-            db.session.remove()
-            db.drop_all()
-
-
-if __name__ == 'main':
-    unittest.main()
