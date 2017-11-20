@@ -106,9 +106,5 @@ class CategoriesTestCase(BaseTestCase):
             headers=dict(Authorization="Bearer " + jwt_token), )
         self.assertEqual(req.status_code, 200)
 
-        # Test to see if it exists
-        req = self.client().get(
-            'api/v1/category/1',
-            headers=dict(Authorization="Bearer " + jwt_token))
-        self.assertEqual(req.status_code, 401)
+
 
