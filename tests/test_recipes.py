@@ -72,6 +72,142 @@ class RecipesTestCase(BaseTestCase):
             headers=dict(Authorization="Bearer " + jwt_token), )
         self.assertEqual(req.status_code, 200)
 
+    def test_search_existing_recipe(self):
+        """Test api can search existing recipe"""
+        req = self.authenticate()
+
+        jwt_token = json.loads(req.data.decode())['jwt_token']
+
+        # create a category by making a POST request
+        self.client().post(
+            'api/v1/category',
+            headers=dict(Authorization="Bearer " + jwt_token),
+            data=self.category)
+        req = self.client().post('api/v1/category/1/recipes',
+                                 headers=dict(Authorization="Bearer " + jwt_token),
+                                 data=self.recipe)
+        self.assertEqual(req.status_code, 201)
+
+        res = self.client().get(
+            'api/v1/category/1/recipes?q=mea',
+            headers=dict(Authorization="Bearer " + jwt_token), data=self.category
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertIn('meat pie', str(req.data))
+
+    def test_search_non_existing_recipe(self):
+        """Test api can searching non existing recipe"""
+        req = self.authenticate()
+
+        jwt_token = json.loads(req.data.decode())['jwt_token']
+
+        # create a category by making a POST request
+        self.client().post(
+            'api/v1/category',
+            headers=dict(Authorization="Bearer " + jwt_token),
+            data=self.category)
+        req = self.client().post('api/v1/category/1/recipes',
+                                 headers=dict(Authorization="Bearer " + jwt_token),
+                                 data=self.recipe)
+        self.assertEqual(req.status_code, 201)
+
+        res = self.client().get(
+            'api/v1/category/1/recipes?q=des',
+            headers=dict(Authorization="Bearer " + jwt_token), data=self.category
+        )
+        self.assertEqual(res.status_code, 401)
+
+    def test_correct_page_no(self):
+        """Test api can take correct page no"""
+        req = self.authenticate()
+
+        jwt_token = json.loads(req.data.decode())['jwt_token']
+
+        # create a category by making a POST request
+        self.client().post(
+            'api/v1/category',
+            headers=dict(Authorization="Bearer " + jwt_token),
+            data=self.category)
+        req = self.client().post('api/v1/category/1/recipes',
+                                 headers=dict(Authorization="Bearer " + jwt_token),
+                                 data=self.recipe)
+        self.assertEqual(req.status_code, 201)
+
+        res = self.client().get(
+            'api/v1/category/1/recipes?limit=1&page=1',
+            headers=dict(Authorization="Bearer " + jwt_token), data=self.category
+        )
+        self.assertEqual(res.status_code, 200)
+
+    def test_negative_page_no(self):
+        """Test api can take negative page no"""
+        req = self.authenticate()
+
+        jwt_token = json.loads(req.data.decode())['jwt_token']
+
+        # create a category by making a POST request
+        self.client().post(
+            'api/v1/category',
+            headers=dict(Authorization="Bearer " + jwt_token),
+            data=self.category)
+        req = self.client().post('api/v1/category/1/recipes',
+                                 headers=dict(Authorization="Bearer " + jwt_token),
+                                 data=self.recipe)
+        self.assertEqual(req.status_code, 201)
+
+        res = self.client().get(
+            'api/v1/category/1/recipes?limit=1&page=-1',
+            headers=dict(Authorization="Bearer " + jwt_token), data=self.category
+        )
+        self.assertEqual(res.status_code, 400)
+
+    def test_correct_limit(self):
+        """Test api can take correct limit"""
+        req = self.authenticate()
+
+        jwt_token = json.loads(req.data.decode())['jwt_token']
+
+        # create a category by making a POST request
+        self.client().post(
+            'api/v1/category',
+            headers=dict(Authorization="Bearer " + jwt_token),
+            data=self.category)
+        req = self.client().post('api/v1/category/1/recipes',
+                                 headers=dict(Authorization="Bearer " + jwt_token),
+                                 data=self.recipe)
+        self.assertEqual(req.status_code, 201)
+
+        res = self.client().get(
+            'api/v1/category/1/recipes?limit=1&page=1',
+            headers=dict(Authorization="Bearer " + jwt_token), data=self.category
+        )
+        self.assertEqual(res.status_code, 200)
+
+    def test_negative_limit(self):
+        """Test api can take a negative limit"""
+        req = self.authenticate()
+
+        jwt_token = json.loads(req.data.decode())['jwt_token']
+
+        # create a category by making a POST request
+        self.client().post(
+            'api/v1/category',
+            headers=dict(Authorization="Bearer " + jwt_token),
+            data=self.category)
+        req = self.client().post('api/v1/category/1/recipes',
+                                 headers=dict(Authorization="Bearer " + jwt_token),
+                                 data=self.recipe)
+        self.assertEqual(req.status_code, 201)
+
+        res = self.client().get(
+            'api/v1/category/1/recipes?limit=-1&page=1',
+            headers=dict(Authorization="Bearer " + jwt_token), data=self.category
+        )
+        self.assertEqual(res.status_code, 400)
+
+
+
+
 
 
 
