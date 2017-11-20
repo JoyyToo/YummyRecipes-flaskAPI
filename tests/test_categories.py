@@ -106,5 +106,121 @@ class CategoriesTestCase(BaseTestCase):
             headers=dict(Authorization="Bearer " + jwt_token), )
         self.assertEqual(req.status_code, 200)
 
+    def test_search_existing_category(self):
+        """Test api can search existing category"""
+        req = self.authenticate()
+
+        jwt_token = json.loads(req.data.decode())['jwt_token']
+
+        # create a category by making a POST request
+        req = self.client().post(
+            'api/v1/category',
+            headers=dict(Authorization="Bearer " + jwt_token),
+            data=self.category)
+        self.assertEqual(req.status_code, 201)
+
+        res = self.client().get(
+            'api/v1/category?q=name',
+            headers=dict(Authorization="Bearer " + jwt_token), data=self.category
+        )
+        self.assertEqual(res.status_code, 200)
+        self.assertIn('nametrf', str(req.data))
+
+    def test_search_non_existing_category(self):
+        """Test searching non existing category"""
+        req = self.authenticate()
+
+        jwt_token = json.loads(req.data.decode())['jwt_token']
+
+        # create a category by making a POST request
+        req = self.client().post(
+            'api/v1/category',
+            headers=dict(Authorization="Bearer " + jwt_token),
+            data=self.category)
+        self.assertEqual(req.status_code, 201)
+
+        res = self.client().get(
+            'api/v1/category?q=des',
+            headers=dict(Authorization="Bearer " + jwt_token), data=self.category
+        )
+        self.assertEqual(res.status_code, 401)
+
+    def test_correct_page_no(self):
+        """Test if api can take correct page no"""
+        req = self.authenticate()
+
+        jwt_token = json.loads(req.data.decode())['jwt_token']
+
+        # create a category by making a POST request
+        req = self.client().post(
+            'api/v1/category',
+            headers=dict(Authorization="Bearer " + jwt_token),
+            data=self.category)
+        self.assertEqual(req.status_code, 201)
+
+        res = self.client().get(
+            'api/v1/category?limit=1&page=1',
+            headers=dict(Authorization="Bearer " + jwt_token), data=self.category
+        )
+        self.assertEqual(res.status_code, 200)
+
+    def test_negative_page_no(self):
+        """Test if api can take an incorrect page no"""
+        req = self.authenticate()
+
+        jwt_token = json.loads(req.data.decode())['jwt_token']
+
+        # create a category by making a POST request
+        req = self.client().post(
+            'api/v1/category',
+            headers=dict(Authorization="Bearer " + jwt_token),
+            data=self.category)
+        self.assertEqual(req.status_code, 201)
+
+        res = self.client().get(
+            'api/v1/category?limit=1&page=-7',
+            headers=dict(Authorization="Bearer " + jwt_token), data=self.category
+        )
+        self.assertEqual(res.status_code, 400)
+
+    def test_correct_limit(self):
+        """Test if api can take correct limit"""
+        req = self.authenticate()
+
+        jwt_token = json.loads(req.data.decode())['jwt_token']
+
+        # create a category by making a POST request
+        req = self.client().post(
+            'api/v1/category',
+            headers=dict(Authorization="Bearer " + jwt_token),
+            data=self.category)
+        self.assertEqual(req.status_code, 201)
+
+        res = self.client().get(
+            'api/v1/category?limit=1&page=1',
+            headers=dict(Authorization="Bearer " + jwt_token), data=self.category
+        )
+        self.assertEqual(res.status_code, 200)
+
+    def test_negative_limit(self):
+        """Test if api can take negative limit"""
+        req = self.authenticate()
+
+        jwt_token = json.loads(req.data.decode())['jwt_token']
+
+        # create a category by making a POST request
+        req = self.client().post(
+            'api/v1/category',
+            headers=dict(Authorization="Bearer " + jwt_token),
+            data=self.category)
+        self.assertEqual(req.status_code, 201)
+
+        res = self.client().get(
+            'api/v1/category?limit=-1&page=1',
+            headers=dict(Authorization="Bearer " + jwt_token), data=self.category
+        )
+        self.assertEqual(res.status_code, 400)
+
+
 
 
