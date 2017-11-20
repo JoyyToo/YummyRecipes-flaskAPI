@@ -34,6 +34,7 @@ def token_required(f):
     return validate_user
 
 
+# Enables adding and parsing of multiple arguments in the context of a single request
 registration_parser = api.parser()
 registration_parser.add_argument('email', type=str, help='Email', location='form', required=True)
 registration_parser.add_argument('username', type=str, help='username', location='form', required=True)
@@ -165,9 +166,37 @@ class UserLogout(Resource):
         return response
 
 
+@api.route('/auth/reset-password')
+class ResetPasswordView(Resource):
+    method_decorators = [token_required]
+
+    def post(self, user_id):
+        """Handles POST request for /auth/reset-password"""
+        password = request.data('password', '')
+        user = Users.query.filter_by(id=user_id).first()
+        if password:
+            user.password = password
+            user.save()
+            response = jsonify({
+                "message": "Password updated successfully",
+                "status": "success"
+            })
+            response.status_code = 200
+            return response
+        else:
+            response = jsonify({
+                "message": "Password cannot be an empty string",
+                "status": "error"
+            })
+            response.status_code = 300
+            return response
+
+
 category_get_parser = api.parser()
 category_parser = api.parser()
 category_get_parser.add_argument('q', type=str, help='Search')
+category_get_parser.add_argument('page', type=int, help='Page number, default=1')
+category_get_parser.add_argument('limit', type=int, help='Limit per page, default=5')
 category_parser.add_argument('name', type=str, help='Category name', location='form', required=True)
 category_parser.add_argument('desc', type=str, help='Category Description', location='form', required=True)
 
@@ -182,10 +211,94 @@ class UserCategories(Resource):
         """Gets all categories or a single category by id [ENDPOINT] GET /category and GET /category/<id>"""
         args = category_get_parser.parse_args()
         q = args['q']
+        page = args['page']
+        limit = args['limit']
 
-        if q:
-            categories = api.models.categories.query. \
-                filter(api.models.categories.name.like('%' + q + '%'))
+        if page:
+            try:
+                page = int(page)
+                if page < 1:
+                    return {
+                               "message": "Page number must be a positive integer!! "
+                           }, 400
+            except Exception:
+                return {
+                           "message": "Invalid page value!!"
+                       }, 400
+        else:
+            page = 1
+
+        if limit:
+            try:
+                limit = int(limit)
+                if limit < 1:
+                    return {
+                               "message": "Limit number must be a positive integer!! "
+                           }, 400
+            except Exception:
+                return {
+                           "message": "Invalid limit value!!"
+                       }, 400
+        else:
+            limit = 5
+
+        usr_categories = []
+        _category = Categories.query.filter_by(user_id=user_id).paginate(page, limit, error_out=False)
+        for y in _category.items:
+            usr_categories.append(y)
+            if q:
+                _categories = Categories.query. \
+                    filter(Categories.name.like('%' + q + '%')).paginate(page, limit)
+                user_categories = []
+                for x in _categories.items:
+                    if x.user_id == user_id:
+                        user_categories.append(x)
+                if user_categories:
+                    categories = []
+                    for category in user_categories:
+                        obj = {
+                            "id": category.id,
+                            "name": category.name,
+                            "desc": category.desc,
+                            "date_created": category.date_created,
+                            "date_modified": category.date_modified,
+                            "user_id": category.user_id
+                        }
+                        categories.append(obj)
+
+                    response = jsonify({
+                        "categories": categories,
+                        "status": "success"
+                    })
+                    response.status_code = 200
+                    return response
+                else:
+                    response = jsonify({
+                        "message": "Category '{}' not found".format(q),
+                        "status": "error"
+                    })
+                    response.status_code = 401
+                    return response
+
+        if _category:
+            _user_categories = []
+            for category in usr_categories:
+                obj = {
+                    "id": category.id,
+                    "name": category.name,
+                    "desc": category.desc,
+                    "date_created": category.date_created,
+                    "date_modified": category.date_modified,
+                    "user_id": category.user_id
+                }
+                _user_categories.append(obj)
+
+            response = jsonify({
+                "categories": _user_categories,
+                "status": "success"
+            })
+            response.status_code = 200
+            return response
 
         if not _id:
             cat = Categories.get_all(user_id).all()
@@ -349,6 +462,8 @@ class UserCategories(Resource):
 recipe_parser = api.parser()
 recipe_get_parser = api.parser()
 recipe_get_parser.add_argument('q', type=str, help='Search')
+recipe_get_parser.add_argument('page', type=int, help='Page number, default=1')
+recipe_get_parser.add_argument('limit', type=int, help='Limit per page, default=5')
 recipe_parser.add_argument('name', type=str, help='Recipe name', location='form', required=True)
 recipe_parser.add_argument('time', type=str, help='Expected time', location='form', required=True)
 recipe_parser.add_argument('ingredients', type=str, help='Ingredients', location='form', required=True)
@@ -363,12 +478,100 @@ class UserRecipes(Resource):
     @api.doc(parser=recipe_get_parser)
     def get(self, user_id, category_id, _id=None):
         """Gets all Recipes or a single recipe by id [ENDPOINT] GET /category/<int:category_id>/recipes/<int:_id> """
-        args = category_get_parser.parse_args()
+        args = recipe_get_parser.parse_args()
         q = args['q']
+        page = args['page']
+        limit = args['limit']
 
-        if q:
-            recipes = api.models.recipes.query. \
-                filter(api.models.recipes.name.like('%' + q + '%'))
+        if page:
+            try:
+                page = int(page)
+                if page < 1:
+                    return {
+                               "message": "Page number must be a positive integer!! "
+                           }, 400
+            except Exception:
+                return {
+                           "message": "Invalid page value!!"
+                       }, 400
+        else:
+            page = 1
+
+        if limit:
+            try:
+                limit = int(limit)
+                if limit < 1:
+                    return {
+                               "message": "Limit number must be a positive integer!! "
+                           }, 400
+            except Exception:
+                return {
+                           "message": "Invalid limit value!!"
+                       }, 400
+        else:
+            limit = 5
+
+        usr_recipes = []
+        _urecipes = Recipes.query.filter_by(category_id=category_id).paginate(page, limit, error_out=False)
+        for y in _urecipes.items:
+            usr_recipes.append(y)
+
+            if q:
+                _recipes = Recipes.query. \
+                    filter(Recipes.name.like('%' + q + '%'))
+                user_recipes = []
+                for x in _recipes:
+                    if x.category_id == category_id:
+                        user_recipes.append(x)
+                if user_recipes:
+                    recipes = []
+                    for recipe in user_recipes:
+                        obj = {
+                            "id": recipe.id,
+                            "name": recipe.name,
+                            "time": recipe.time,
+                            "ingredients": recipe.ingredients,
+                            "direction": recipe.direction,
+                            "category_id": recipe.category_id,
+                            "date_created": recipe.date_created,
+                            "date_modified": recipe.date_modified,
+                        }
+                        recipes.append(obj)
+
+                    response = jsonify({
+                        "categories": recipes,
+                        "status": "success"
+                    })
+                    response.status_code = 200
+                    return response
+                else:
+                    response = jsonify({
+                        "message": "Recipe '{}' not found".format(q),
+                        "status": "error"
+                    })
+                    response.status_code = 401
+                    return response
+        if _urecipes:
+            _recipes2 = []
+            for rec in usr_recipes:
+                obj = {
+                    "id": rec.id,
+                    "name": rec.name,
+                    "time": rec.time,
+                    "ingredients": rec.ingredients,
+                    "direction": rec.direction,
+                    "category_id": rec.category_id,
+                    "date_created": rec.date_created,
+                    "date_modified": rec.date_modified,
+                }
+                _recipes2.append(obj)
+
+            response = jsonify({
+                "categories": _recipes2,
+                "status": "success"
+            })
+            response.status_code = 200
+            return response
 
         if not _id:
 
@@ -426,7 +629,7 @@ class UserRecipes(Resource):
             response.status_code = 401
             return response
         response = jsonify({
-            "message": "Category does not exist",
+            "message": "Recipe does not exist",
             "status": "error"
         })
         response.status_code = 401
