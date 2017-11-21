@@ -20,7 +20,7 @@ class BaseTestCase(unittest.TestCase):
         self.user = {'email': self.fake.email(), 'username': self.fake.name(), 'password':  self.fake.name()}
         self.category = {'name': 'nametrf', 'desc': 'description'}
         self.recipe = {'name': 'meat pie', 'time': '1 hour',
-                         'ingredients': '1 tbsp powder', 'direction': 'stir'}
+                       'ingredients': '1 tbsp powder', 'direction': 'stir'}
         self.wrong_user = {'name': 'testuser_wrong', 'email': self.fake.email(),
                            'password': 'testuser_wrong'}
         with app.app_context():

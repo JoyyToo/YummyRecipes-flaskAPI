@@ -186,9 +186,9 @@ class Recipes(db.Model):
         return Recipes.query.filter_by(category_id=category_id).all()
 
     @staticmethod
-    def get_single(_id):
+    def get_single(_id, category_id):
         """Returns a single recipe by with id = _id"""
-        return Recipes.query.filter_by(id=_id).first()
+        return Recipes.query.filter_by(id=_id, category_id=category_id).first()
 
     def __repr__(self):
         """Returns an instance of Recipe"""
