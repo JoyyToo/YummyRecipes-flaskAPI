@@ -1,4 +1,5 @@
 # YummyRecipes-flaskAPI
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/0d508bcb432b4ca983a56ee409e42549)](https://www.codacy.com/app/JoyyToo/YummyRecipes-flaskAPI?utm_source=github.com&utm_medium=referral&utm_content=JoyyToo/YummyRecipes-flaskAPI&utm_campaign=badger)
 [![Build Status](https://travis-ci.org/JoyyToo/YummyRecipes-flaskAPI.svg?branch=master)](https://travis-ci.org/JoyyToo/YummyRecipes-flaskAPI) [![Coverage Status](https://coveralls.io/repos/github/JoyyToo/YummyRecipes-flaskAPI/badge.svg?branch=master)](https://coveralls.io/github/JoyyToo/YummyRecipes-flaskAPI?branch=master)
 
 A Flask RESTful API with Endpoints that enable users to:
