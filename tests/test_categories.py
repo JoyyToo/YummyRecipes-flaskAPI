@@ -51,7 +51,43 @@ class CategoriesTestCase(BaseTestCase):
             headers=dict(Authorization="Bearer " + jwt_token),
         )
         self.assertEqual(res.status_code, 200)
-        # self.assertIn('description', str(res.data))
+
+        res = self.client().get(
+            'api/v1/category/20',
+            headers=dict(Authorization="Bearer " + jwt_token),
+        )
+        self.assertEqual(res.status_code, 401)
+
+    def test_if_user_can_retrieve_categories_by_id(self):
+        """Test api can get categories by id"""
+        req = self.authenticate()
+
+        jwt_token = json.loads(req.data.decode())['jwt_token']
+
+        # create a category by making a POST request
+        req = self.client().post(
+            'api/v1/category',
+            headers=dict(Authorization="Bearer " + jwt_token),
+            data=self.category)
+        self.assertEqual(req.status_code, 201)
+
+        res = self.client().get(
+            'api/v1/category/1',
+            headers=dict(Authorization="Bearer " + jwt_token),
+        )
+        self.assertEqual(res.status_code, 200)
+
+    def test_if_get_non_existing_category(self):
+        """Test if api can get non_existing category"""
+        req = self.authenticate()
+
+        jwt_token = json.loads(req.data.decode())['jwt_token']
+
+        res = self.client().get(
+            'api/v1/category/2',
+            headers=dict(Authorization="Bearer " + jwt_token),
+        )
+        self.assertEqual(res.status_code, 401)
 
     def test_category_editing(self):
         """Test category can be updated"""
@@ -83,6 +119,27 @@ class CategoriesTestCase(BaseTestCase):
             headers=dict(Authorization="Bearer " + jwt_token))
         self.assertIn('desc', str(req.data))
 
+        # edit with empty fields
+        req = self.client().put(
+            'api/v1/category/1',
+            headers=dict(Authorization="Bearer " + jwt_token),
+            data={'name': '', 'desc': ''})
+        self.assertEqual(req.status_code, 400)
+
+    def test_edit_non_existing_category(self):
+        """Test category edit non existing category"""
+
+        req = self.authenticate()
+
+        jwt_token = json.loads(req.data.decode())['jwt_token']
+
+        # edit non existing category
+        req = self.client().put(
+            'api/v1/category/1',
+            headers=dict(Authorization="Bearer " + jwt_token),
+            )
+        self.assertEqual(req.status_code, 401)
+
     def test_category_deletion(self):
         """Test category can be deleted"""
 
@@ -105,6 +162,18 @@ class CategoriesTestCase(BaseTestCase):
             'api/v1/category/1',
             headers=dict(Authorization="Bearer " + jwt_token), )
         self.assertEqual(req.status_code, 200)
+
+    def test_delete_non_existing_category(self):
+        """Test deletion of non existing category"""
+        req = self.authenticate()
+
+        jwt_token = json.loads(req.data.decode())['jwt_token']
+
+        # delete the category
+        req = self.client().delete(
+            'api/v1/category/1',
+            headers=dict(Authorization="Bearer " + jwt_token), )
+        self.assertEqual(req.status_code, 401)
 
     def test_search_existing_category(self):
         """Test api can search existing category"""
@@ -165,7 +234,7 @@ class CategoriesTestCase(BaseTestCase):
         self.assertEqual(res.status_code, 200)
 
     def test_negative_page_no(self):
-        """Test if api can take an incorrect page no"""
+        """Test if api can take a negative page no"""
         req = self.authenticate()
 
         jwt_token = json.loads(req.data.decode())['jwt_token']
@@ -182,6 +251,7 @@ class CategoriesTestCase(BaseTestCase):
             headers=dict(Authorization="Bearer " + jwt_token), data=self.category
         )
         self.assertEqual(res.status_code, 400)
+        self.assertIn('Page number must be a positive integer!! ', str(res.data))
 
     def test_correct_limit(self):
         """Test if api can take correct limit"""
@@ -220,6 +290,7 @@ class CategoriesTestCase(BaseTestCase):
             headers=dict(Authorization="Bearer " + jwt_token), data=self.category
         )
         self.assertEqual(res.status_code, 400)
+        self.assertIn('Limit number must be a positive integer!!', str(res.data))
 
 
 
