@@ -1,4 +1,5 @@
-import os, unittest, json
+import unittest
+import json
 
 from tests.base_testcase import BaseTestCase
 

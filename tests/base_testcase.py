@@ -1,10 +1,8 @@
 import unittest
-import os
 
 from app import app, db
 
-from app.models import Categories, Users, Recipes
-from app.views import api
+from app.models import Users
 
 from instance.config import app_config
 from faker import Faker

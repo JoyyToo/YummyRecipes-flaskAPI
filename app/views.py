@@ -1,6 +1,6 @@
 from functools import wraps
 
-from flask import request, jsonify, abort, json
+from flask import request, jsonify, json
 import re
 from flask_bcrypt import Bcrypt
 from app import api, Resource, reqparse
@@ -256,7 +256,8 @@ class UserCategories(Resource):
                 "id": category.id,
                 "name": category.name,
                 "desc": category.desc,
-                "date_created": category.date_created,
+                "date_created"
+                "": category.date_created,
                 "date_modified": category.date_modified,
                 "user_id": category.user_id
             }
