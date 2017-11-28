@@ -20,6 +20,5 @@ api = Api(app, version='1.0',
           description='Yummy Recipes RESTful API with Endpoints.',
           prefix='/api/v1')
 db = SQLAlchemy(app)
-db.create_all()
 
 from . import views
