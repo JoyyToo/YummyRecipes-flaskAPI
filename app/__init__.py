@@ -22,6 +22,3 @@ api = Api(app, version='1.0',
 db = SQLAlchemy(app)
 
 from . import views
-
-# bind app to db
-db.init_app(app)
