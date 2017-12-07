@@ -102,7 +102,6 @@ The API implements searching based on the name using a GET parameter *q* as show
 http://127.0.0.1:5000/category?q=example
 ```
 
-```
 ### Api endpoints
 
 | url | Method|  Description| Authentication |
@@ -122,4 +121,4 @@ http://127.0.0.1:5000/category?q=example
 | /recipes/{id} | GET | Gets a single recipe|TRUE
 | /recipe/{id} | PUT | Updates a single recipe|TRUE
 | /recipe/{id} | DELETE | Deletes a single recipe|TRUE
-```
+
