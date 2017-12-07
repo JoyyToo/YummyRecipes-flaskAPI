@@ -110,13 +110,11 @@ http://127.0.0.1:5000/category?q=example
 | /login | POST | Handles POST request for /auth/login | TRUE
 | /logout | GET | get Authentication token for use on next requests | TRUE
 | /reset-password | POST | get Authentication token for use on next requests | TRUE
-
 | /category | GET | Get every category of logged in user|TRUE
 | /category/{_id} | GET | Get category with {id} of logged in user|TRUE
 | /category | POST | Create a new category|TRUE
 | /category/{_id}  | PUT | Update a category with {id} of logged in user|TRUE
 | /category/{_id} | DELETE | Delete category with {id} of logged in user|TRUE
-
 | /recipe | POST | Creates a recipe|TRUE
 | /recipes/{id} | GET | Gets a single recipe|TRUE
 | /recipe/{id} | PUT | Updates a single recipe|TRUE
