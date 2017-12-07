@@ -115,8 +115,15 @@ http://127.0.0.1:5000/category?q=example
 | /category | POST | Create a new category|TRUE
 | /category/{_id}  | PUT | Update a category with {id} of logged in user|TRUE
 | /category/{_id} | DELETE | Delete category with {id} of logged in user|TRUE
-| /recipe | POST | Creates a recipe|TRUE
-| /recipes/{id} | GET | Gets a single recipe|TRUE
-| /recipe/{id} | PUT | Updates a single recipe|TRUE
-| /recipe/{id} | DELETE | Deletes a single recipe|TRUE
+| /category/{_id}/recipes | POST | Creates a recipe|TRUE
+| /category/{_id}/recipes | GET | Gets all recipes|TRUE
+| /category/{_id}/recipes/{id} | GET | Gets a single recipe|TRUE
+| /category/{_id}/recipes/{id} | PUT | Updates a single recipe|TRUE
+| /category/{_id}/recipes/{id} | DELETE | Deletes a single recipe|TRUE
+
+
+### Testing and API documentation
+
+[https://yummy-recipe-flaskapi.herokuapp.com/](https://yummy-recipe-flaskapi.herokuapp.com/)
+
 
