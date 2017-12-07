@@ -39,13 +39,17 @@ Install all package requirements in your python virtual environment.
 ```
 pip install -r requirements.txt
 ```
+## Env
+Rename .env.sample into .env
 
+## Virtual environment
 Activate virtual environment:
 
 ```
 $ source .venv/bin/activate
 ```
 
+## Testing
 To set up unit testing environment:
 
 ```
@@ -102,28 +106,24 @@ The API implements searching based on the name using a GET parameter *q* as show
 http://127.0.0.1:5000/category?q=example
 ```
 
+```
 ### Api endpoints
 
 | url | Method|  Description| Authentication |
 | --- | --- | --- | --- |
 | /register | POST | Registers new user | FALSE
 | /login | POST | Handles POST request for /auth/login | TRUE
-| /logout | GET | get Authentication token for use on next requests | TRUE
-| /reset-password | POST | get Authentication token for use on next requests | TRUE
+| /logout | GET | Logs out a user | TRUE
+| /reset-password | POST | Reset user password | TRUE
+
 | /category | GET | Get every category of logged in user|TRUE
 | /category/{_id} | GET | Get category with {id} of logged in user|TRUE
 | /category | POST | Create a new category|TRUE
 | /category/{_id}  | PUT | Update a category with {id} of logged in user|TRUE
 | /category/{_id} | DELETE | Delete category with {id} of logged in user|TRUE
-| /category/{_id}/recipes | POST | Creates a recipe|TRUE
-| /category/{_id}/recipes | GET | Gets all recipes|TRUE
-| /category/{_id}/recipes/{id} | GET | Gets a single recipe|TRUE
-| /category/{_id}/recipes/{id} | PUT | Updates a single recipe|TRUE
-| /category/{_id}/recipes/{id} | DELETE | Deletes a single recipe|TRUE
 
-
-### Testing and API documentation
-
-[https://yummy-recipe-flaskapi.herokuapp.com/](https://yummy-recipe-flaskapi.herokuapp.com/)
-
-
+| /recipe | POST | Creates a recipe|TRUE
+| /recipes/{id} | GET | Gets a single recipe|TRUE
+| /recipe/{id} | PUT | Updates a single recipe|TRUE
+| /recipe/{id} | DELETE | Deletes a single recipe|TRUE
+```
