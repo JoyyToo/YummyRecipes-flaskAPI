@@ -21,3 +21,4 @@ api = Api(app, version='1.0',
           prefix='/api/v1')
 db = SQLAlchemy(app)
 
+from . import views
