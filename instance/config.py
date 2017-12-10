@@ -9,6 +9,8 @@ class Config(object):
     SECRET_KEY = os.getenv('SECRET')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
+    # Flask-RESTPlus Config
+    SWAGGER_UI_DOC_EXPANSION = 'list'
 
 
 class ProductionConfig(Config):

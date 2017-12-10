@@ -116,6 +116,29 @@ class TestUserAuth(BaseTestCase):
         self.assertIn("Password must be 6 or more characters.", req.data)
         self.assertEqual(req.status_code, 400)
 
+    # tokens
+    def test_for_unauthorized_login(self):
+        """Tests for unauthorized login"""
+        self.client().post('api/v1/auth/register', data=self.user)
+        req = self.client().post('api/v1/auth/login', data=self.user)
+
+        req = self.client().post(
+            'api/v1/auth/reset-password',
+            data=self.user)
+        self.assertIn("Unauthorized, Please login or register", req.data)
+        self.assertEqual(req.status_code, 403)
+
+        # index error
+        self.client().post('api/v1/auth/register', data=self.user)
+        req = self.client().post('api/v1/auth/login', data=self.user)
+
+        req = self.client().post(
+            'api/v1/auth/reset-password',
+            headers=dict(Authorization="hiuuivuv"),
+            data=self.user)
+        self.assertIn("Please Use Bearer before adding token [Bearer <token>]", req.data)
+        self.assertEqual(req.status_code, 403)
+
 
 if __name__ == 'main':
     unittest.main()

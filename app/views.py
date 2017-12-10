@@ -1,18 +1,35 @@
 from functools import wraps
 
-from flask import request, jsonify, json
+from flask import request, jsonify
 import re
 from flask_bcrypt import Bcrypt
-from app import api, Resource, reqparse
+from app import api, Resource, reqparse, app
 from app.models import Users, Categories, Recipes, Sessions
+
+# namespaces
+auth_namespace = api.namespace('auth', description="Authentication/Authorization operations.")
+category_namespace = api.namespace('category', description="Category operations.")
 
 
 def token_required(f):
     @wraps(f)
     def validate_user(*args, **kwargs):
         user_id = None
-        auth_header = request.headers.get('Authorization')
-        access_token = auth_header.split(" ")[1] if auth_header else None
+        auth_header = request.headers.get('Authorization', '')
+        if auth_header:
+            try:
+                access_token = auth_header.split(" ")[1]
+            except IndexError:
+                return {
+                           "message": "Please Use Bearer before adding token [Bearer <token>]",
+                           "status": "error"
+                       }, 403
+        else:
+            return{
+                "message": "Unauthorized, Please login or register",
+                "status": "error"
+            }, 403
+
         if access_token:
             user_id = Users.decode_token(access_token)
             if user_id:
@@ -24,11 +41,6 @@ def token_required(f):
                                }, 403
                 if isinstance(user_id, str):
                     return user_id
-        else:
-            return {
-                "message": "Unauthorized, Please login or register",
-                "status": "error"
-            }, 403
 
         return f(user_id, *args, **kwargs)
 
@@ -42,7 +54,7 @@ registration_parser.add_argument('username', type=str, help='username', location
 registration_parser.add_argument('password', type=str, help='Password', location='form', required=True)
 
 
-@api.route('/auth/register')
+@auth_namespace.route('/register')
 class UserRegistration(Resource):
     @api.expect(registration_parser)
     def post(self):
@@ -118,7 +130,7 @@ login_parser.add_argument('email', type=str, help='Email', location='form', requ
 login_parser.add_argument('password', type=str, help='Password', location='form', required=True)
 
 
-@api.route('/auth/login')
+@auth_namespace.route('/login')
 class UserLogin(Resource):
     @api.expect(login_parser)
     def post(self):
@@ -158,7 +170,7 @@ class UserLogin(Resource):
             return response
 
 
-@api.route('/auth/logout')
+@auth_namespace.route('/logout')
 class UserLogout(Resource):
     method_decorators = [token_required]
 
@@ -179,7 +191,7 @@ reset_parser.add_argument('email', type=str, help='Email', location='form', requ
 reset_parser.add_argument('new password', type=str, help='Password', location='form', required=True)
 
 
-@api.route('/auth/reset-password')
+@auth_namespace.route('/reset-password')
 class ResetPasswordView(Resource):
     method_decorators = [token_required]
 
@@ -230,43 +242,17 @@ category_parser.add_argument('name', type=str, help='Category name', location='f
 category_parser.add_argument('desc', type=str, help='Category Description', location='form', required=True)
 
 
-@api.route('/category', methods=['GET', 'POST'])
-@api.route('/category/<int:_id>', methods=['GET', 'PUT', 'DELETE'])
-class UserCategories(Resource):
+@category_namespace.route('', methods=['GET', 'POST'])
+class UserCategory(Resource):
     method_decorators = [token_required]
 
     @api.doc(parser=category_get_parser)
     def get(self, user_id, _id=None):
-        """Gets all categories or a single category by id [ENDPOINT] GET /category and GET /category/<id>"""
+        """Gets all categories [ENDPOINT] GET /category"""
         args = category_get_parser.parse_args()
         q = args['q']
         page = args['page']
         limit = args['limit']
-
-        if _id:
-            category = Categories.get_single(_id)
-            if not category:
-                response = jsonify({
-                    "message": "Category not found",
-                    "status": "error"
-                })
-                response.status_code = 401
-                return response
-            obj = {
-                "id": category.id,
-                "name": category.name,
-                "desc": category.desc,
-                "date_created"
-                "": category.date_created,
-                "date_modified": category.date_modified,
-                "user_id": category.user_id
-            }
-            response = jsonify({
-                "category": obj,
-                "status": "success",
-            })
-            response.status_code = 200
-            return response
 
         if page:
             try:
@@ -328,6 +314,7 @@ class UserCategories(Resource):
                 })
                 response.status_code = 401
                 return response
+
         try:
             _category = Categories.query.filter_by(user_id=user_id).paginate(page, limit, error_out=True)
         except Exception as e:
@@ -355,13 +342,15 @@ class UserCategories(Resource):
                                    "status": "success"
                                })
             response.status_code = 200
+
+            if not _user_categories:
+                response = jsonify({
+                    "message": "No categories available at the moment",
+                    "status": "error"
+                })
+                response.status_code = 401
+
             return response
-        response = jsonify({
-                               "message": "No categories available at the moment",
-                               "status": "error"
-                           })
-        response.status_code = 401
-        return response
 
     @api.expect(category_parser)
     def post(self, user_id, _id=None):
@@ -407,6 +396,44 @@ class UserCategories(Resource):
                 "status": "error"
             })
             response.status_code = 400
+            return response
+
+
+category_parser = api.parser()
+category_parser.add_argument('name', type=str, help='Category name', location='form', required=True)
+category_parser.add_argument('desc', type=str, help='Category Description', location='form', required=True)
+
+
+@category_namespace.route('/<int:_id>', methods=['GET', 'PUT', 'DELETE'])
+class UserCategories(Resource):
+    method_decorators = [token_required]
+
+    def get(self, user_id, _id=None):
+        """Gets a single category by id [ENDPOINT] GET /category/<id>"""
+
+        if _id:
+            category = Categories.get_single(_id)
+            if not category:
+                response = jsonify({
+                    "message": "Category not found",
+                    "status": "error"
+                })
+                response.status_code = 401
+                return response
+            obj = {
+                "id": category.id,
+                "name": category.name,
+                "desc": category.desc,
+                "date_created"
+                "": category.date_created,
+                "date_modified": category.date_modified,
+                "user_id": category.user_id
+            }
+            response = jsonify({
+                "category": obj,
+                "status": "success",
+            })
+            response.status_code = 200
             return response
 
     @api.expect(category_parser)
@@ -483,14 +510,13 @@ recipe_parser.add_argument('ingredients', type=str, help='Ingredients', location
 recipe_parser.add_argument('direction', type=str, help='Directions', location='form', required=True)
 
 
-@api.route('/category/<int:category_id>/recipes', methods=['GET', 'POST'])
-@api.route('/category/<int:category_id>/recipes/<int:_id>', methods=['GET', 'PUT', 'DELETE'])
-class UserRecipes(Resource):
+@category_namespace.route('/<int:category_id>/recipes', methods=['GET', 'POST'])
+class UserRecipe(Resource):
     method_decorators = [token_required]
 
     @api.doc(parser=recipe_get_parser)
     def get(self, user_id, category_id, _id=None):
-        """Gets all Recipes or a single recipe by id [ENDPOINT] GET /category/<int:category_id>/recipes/<int:_id> """
+        """Gets all Recipes[ENDPOINT] GET /category/<int:category_id>/recipes """
         args = recipe_get_parser.parse_args()
         q = args['q']
         page = args['page']
@@ -502,33 +528,6 @@ class UserRecipes(Resource):
                 "status": "error"
             })
             response.status_code = 401
-            return response
-
-        if _id:
-            recipe = Recipes.get_single(_id, category_id)
-            if not recipe:
-                response = jsonify({
-                    "message": "Recipe not available at the moment",
-                    "status": "error"
-                })
-                response.status_code = 401
-                return response
-
-            obj = {
-                "id": recipe.id,
-                "name": recipe.name,
-                "time": recipe.time,
-                "ingredients": recipe.ingredients,
-                "direction": recipe.direction,
-                "category_id": recipe.category_id,
-                "date_created": recipe.date_created,
-                "date_modified": recipe.date_modified,
-            }
-            response = jsonify({
-                "recipes": obj,
-                "status": "success"
-            })
-            response.status_code = 200
             return response
 
         if page:
@@ -679,6 +678,57 @@ class UserRecipes(Resource):
         response.status_code = 400
         return response
 
+
+recipe_parser = api.parser()
+
+recipe_parser.add_argument('name', type=str, help='Recipe name', location='form', required=True)
+recipe_parser.add_argument('time', type=str, help='Expected time', location='form', required=True)
+recipe_parser.add_argument('ingredients', type=str, help='Ingredients', location='form', required=True)
+recipe_parser.add_argument('direction', type=str, help='Directions', location='form', required=True)
+
+
+@category_namespace.route('/<int:category_id>/recipes/<int:_id>', methods=['GET', 'PUT', 'DELETE'])
+class UserRecipes(Resource):
+    method_decorators = [token_required]
+
+    def get(self, user_id, category_id, _id=None):
+        """Gets a single recipe by id [ENDPOINT] GET /category/<int:category_id>/recipes/<int:_id> """
+
+        if not Categories.get_single(category_id):
+            response = jsonify({
+                "message": "Category does not exist",
+                "status": "error"
+            })
+            response.status_code = 401
+            return response
+
+        if _id:
+            recipe = Recipes.get_single(_id, category_id)
+            if not recipe:
+                response = jsonify({
+                    "message": "Recipe not available at the moment",
+                    "status": "error"
+                })
+                response.status_code = 401
+                return response
+
+            obj = {
+                "id": recipe.id,
+                "name": recipe.name,
+                "time": recipe.time,
+                "ingredients": recipe.ingredients,
+                "direction": recipe.direction,
+                "category_id": recipe.category_id,
+                "date_created": recipe.date_created,
+                "date_modified": recipe.date_modified,
+            }
+            response = jsonify({
+                "recipes": obj,
+                "status": "success"
+            })
+            response.status_code = 200
+            return response
+
     @api.expect(recipe_parser)
     def put(self, user_id, category_id, _id):
         """Handles updating an existing recipe [ENDPOINT] PUT /categories/<category_id>/recipes/<id>"""
@@ -741,4 +791,3 @@ class UserRecipes(Resource):
         })
         response.status_code = 401
         return response
-

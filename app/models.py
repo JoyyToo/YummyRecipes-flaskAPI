@@ -198,7 +198,7 @@ class Recipes(db.Model):
 class Sessions(db.Model):
     """This class defines the session table"""
 
-    __tablename__ = "sessions"
+    __tablename__ = "user_sessions"
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, unique=True)
     is_logged_in = db.Column(db.Boolean, default=False)
