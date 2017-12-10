@@ -3,7 +3,7 @@ from functools import wraps
 from flask import request, jsonify
 import re
 from flask_bcrypt import Bcrypt
-from app import api, Resource, reqparse
+from app import api, Resource, reqparse, app
 from app.models import Users, Categories, Recipes, Sessions
 
 # namespaces
@@ -15,8 +15,21 @@ def token_required(f):
     @wraps(f)
     def validate_user(*args, **kwargs):
         user_id = None
-        auth_header = request.headers.get('Authorization')
-        access_token = auth_header.split(" ")[1] if auth_header else None
+        auth_header = request.headers.get('Authorization', '')
+        if auth_header:
+            try:
+                access_token = auth_header.split(" ")[1]
+            except IndexError:
+                return {
+                           "message": "Please Use Bearer before adding token [Bearer <token>]",
+                           "status": "error"
+                       }, 403
+        else:
+            return{
+                "message": "Unauthorized, Please login or register",
+                "status": "error"
+            }, 403
+
         if access_token:
             user_id = Users.decode_token(access_token)
             if user_id:
@@ -28,11 +41,6 @@ def token_required(f):
                                }, 403
                 if isinstance(user_id, str):
                     return user_id
-        else:
-            return {
-                "message": "Unauthorized, Please login or register",
-                "status": "error"
-            }, 403
 
         return f(user_id, *args, **kwargs)
 
@@ -334,13 +342,15 @@ class UserCategory(Resource):
                                    "status": "success"
                                })
             response.status_code = 200
+
+            if not _user_categories:
+                response = jsonify({
+                    "message": "No categories available at the moment",
+                    "status": "error"
+                })
+                response.status_code = 401
+
             return response
-        response = jsonify({
-                               "message": "No categories available at the moment",
-                               "status": "error"
-                           })
-        response.status_code = 401
-        return response
 
     @api.expect(category_parser)
     def post(self, user_id, _id=None):
@@ -399,7 +409,7 @@ class UserCategories(Resource):
     method_decorators = [token_required]
 
     def get(self, user_id, _id=None):
-        """Gets all categories or a single category by id [ENDPOINT] GET /category and GET /category/<id>"""
+        """Gets a single category by id [ENDPOINT] GET /category/<id>"""
 
         if _id:
             category = Categories.get_single(_id)
@@ -506,7 +516,7 @@ class UserRecipe(Resource):
 
     @api.doc(parser=recipe_get_parser)
     def get(self, user_id, category_id, _id=None):
-        """Gets all Recipes or a single recipe by id [ENDPOINT] GET /category/<int:category_id>/recipes/<int:_id> """
+        """Gets all Recipes[ENDPOINT] GET /category/<int:category_id>/recipes """
         args = recipe_get_parser.parse_args()
         q = args['q']
         page = args['page']
@@ -682,7 +692,7 @@ class UserRecipes(Resource):
     method_decorators = [token_required]
 
     def get(self, user_id, category_id, _id=None):
-        """Gets all Recipes or a single recipe by id [ENDPOINT] GET /category/<int:category_id>/recipes/<int:_id> """
+        """Gets a single recipe by id [ENDPOINT] GET /category/<int:category_id>/recipes/<int:_id> """
 
         if not Categories.get_single(category_id):
             response = jsonify({
@@ -781,4 +791,3 @@ class UserRecipes(Resource):
         })
         response.status_code = 401
         return response
-
