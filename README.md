@@ -34,6 +34,20 @@ Response Headers
 
 Python 2.6 or a later version
 
+## Virtual environment
+Create virtual environment:
+
+```
+$ sudo pip install virtualenv
+$ virtualenv venv
+```
+
+Activate virtual environment:
+
+```
+$ source .venv/bin/activate
+```
+
 ## Dependencies
 Install all package requirements in your python virtual environment.
 ```
@@ -41,13 +55,6 @@ pip install -r requirements.txt
 ```
 ## Env
 Rename .env.sample into .env
-
-## Virtual environment
-Activate virtual environment:
-
-```
-$ source .venv/bin/activate
-```
 
 ## Testing
 To set up unit testing environment:
@@ -127,5 +134,7 @@ http://127.0.0.1:5000/category?q=example
 
 
 ### Testing and API documentation
+
+You can test using postman
 
 [https://yummy-recipe-flaskapi.herokuapp.com/](https://yummy-recipe-flaskapi.herokuapp.com/)
