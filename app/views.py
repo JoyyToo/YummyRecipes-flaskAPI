@@ -1,5 +1,4 @@
 from functools import wraps
-
 from flask import request, jsonify
 import re
 from flask_bcrypt import Bcrypt
@@ -81,7 +80,8 @@ class UserRegistration(Resource):
                             response.status_code = 400
                             return response
 
-                        user = Users(email=email, username=username, password=password)
+                        user = Users(email=email.strip(' '), username=username.strip(' '),
+                                     password=password.strip(' '))
                         user.save()
                         session = Sessions(user.id)
                         session.save()
@@ -202,7 +202,7 @@ class ResetPasswordView(Resource):
         email = data['email']
         password = data['new password']
         regex = r"(^[a-zA-Z0-9_.]+@[a-zA-Z0-9-]+\.[a-z]+$)"
-        if re.match(regex, email) and email.strip():
+        if re.match(regex, email) and email.strip(' '):
             if len(password.strip()) >= 6:
                 user = Users.query.filter_by(email=email).first()
                 if user:
@@ -235,6 +235,7 @@ class ResetPasswordView(Resource):
 
 category_get_parser = api.parser()
 category_parser = api.parser()
+
 category_get_parser.add_argument('q', type=str, help='Search')
 category_get_parser.add_argument('page', type=int, help='Page number, default=1')
 category_get_parser.add_argument('limit', type=int, help='Limit per page, default=5')
@@ -319,7 +320,7 @@ class UserCategory(Resource):
             _category = Categories.query.filter_by(user_id=user_id).paginate(page, limit, error_out=True)
         except Exception as e:
             response = jsonify({
-                "message": str(e).split(".")[0]+'.',
+                "message": str(e),
                 "status": "error"
             })
             response.status_code = 401
@@ -337,10 +338,11 @@ class UserCategory(Resource):
                           "user_id": category.user_id
                       }
                 _user_categories.append(obj)
-            response = jsonify({
-                                   "categories": _user_categories,
-                                   "status": "success"
-                               })
+            response = jsonify({'Next Page': _category.next_num,
+                                'Prev Page': _category.prev_num,
+                                'Has next': _category.has_next,
+                                'Has previous': _category.has_prev}, _user_categories
+                               )
             response.status_code = 200
 
             if not _user_categories:
@@ -357,8 +359,7 @@ class UserCategory(Resource):
         """Handles adding a new category [ENDPOINT] POST /category"""
         post_data = category_parser.parse_args()
 
-        category = Categories.query.filter_by(name=post_data['name']).first()
-
+        category = Categories.query.filter_by(name=post_data['name']).filter_by(user_id=user_id).first()
         if not category:
 
             if post_data:
@@ -366,7 +367,7 @@ class UserCategory(Resource):
                 desc = post_data['desc']
 
                 if name and desc:
-                    category = Categories(name=name, desc=desc, user_id=user_id)
+                    category = Categories(name=name.strip(' '), desc=desc.strip(' '), user_id=user_id)
                     category.save()
                     obj = {
                         "id": category.id,
@@ -412,35 +413,36 @@ class UserCategories(Resource):
         """Gets a single category by id [ENDPOINT] GET /category/<id>"""
 
         if _id:
-            category = Categories.get_single(_id)
-            if not category:
+            category = Categories.query.filter_by(id=_id).filter_by(user_id=user_id).first()
+            if category:
+
+                obj = {
+                    "id": category.id,
+                    "name": category.name,
+                    "desc": category.desc,
+                    "date_created"
+                    "": category.date_created,
+                    "date_modified": category.date_modified,
+                    "user_id": category.user_id
+                }
                 response = jsonify({
-                    "message": "Category not found",
-                    "status": "error"
+                    "category": obj,
+                    "status": "success",
                 })
-                response.status_code = 401
+                response.status_code = 200
                 return response
-            obj = {
-                "id": category.id,
-                "name": category.name,
-                "desc": category.desc,
-                "date_created"
-                "": category.date_created,
-                "date_modified": category.date_modified,
-                "user_id": category.user_id
-            }
             response = jsonify({
-                "category": obj,
-                "status": "success",
+                "message": "Category not found",
+                "status": "error"
             })
-            response.status_code = 200
+            response.status_code = 401
             return response
 
     @api.expect(category_parser)
     def put(self, user_id, _id):
         """Handles adding updating an existing category [ENDPOINT] PUT /category/<id>"""
 
-        category = Categories.get_single(_id)
+        category = Categories.query.filter_by(id=_id).filter_by(user_id=user_id).first()
 
         if category:
             post_data = category_parser.parse_args()
@@ -482,7 +484,7 @@ class UserCategories(Resource):
     def delete(self, user_id, _id):
         """Handles deleting an existing category [ENDPOINT] DELETE /category/<id>"""
 
-        category = Categories.get_single(_id)
+        category = Categories.query.filter_by(id=_id).filter_by(user_id=user_id).first()
         if category:
             category.delete()
             response = jsonify({
@@ -492,9 +494,9 @@ class UserCategories(Resource):
             response.status_code = 200
             return response
         response = jsonify({
-            "message": "Category does not exist",
-            "status": "error"
-        })
+                            "message": "Category does not exist",
+                            "status": "error"
+                            })
         response.status_code = 401
         return response
 
@@ -604,6 +606,14 @@ class UserRecipe(Resource):
             return response
 
         if _urecipes:
+
+            if not Categories.query.filter_by(id=category_id).filter_by(user_id=user_id).first():
+                response = jsonify({
+                    "message": "Category does not exist",
+                    "status": "error"
+                })
+                response.status_code = 401
+                return response
             recipe = Recipes.get_all(category_id)
             if not recipe:
                 response = jsonify({
@@ -643,39 +653,52 @@ class UserRecipe(Resource):
     def post(self, user_id, category_id):
         """Handles adding a new recipe [ENDPOINT] POST /categories/<category_id>/recipe"""
         post_data = recipe_parser.parse_args()
-        if post_data:
-            name = post_data['name']
-            time = post_data['time']
-            ingredients = post_data['ingredients']
-            direction = post_data['direction']
 
-            if name and time and ingredients and direction:
-                recipe = Recipes(name=name, time=time, ingredients=ingredients, direction=direction,
-                                 category_id=category_id)
-                recipe.save()
-                obj = {
-                    "id": recipe.id,
-                    "name": recipe.name,
-                    "time": recipe.time,
-                    "ingredients": recipe.ingredients,
-                    "direction": recipe.direction,
-                    "category_id": recipe.category_id,
-                    "date_created": recipe.date_created,
-                    "date_modified": recipe.date_modified,
-                }
-                response = jsonify({
-                    "message": "Recipe added successfully",
-                    "status": "success",
-                    "recipe": obj
-                })
+        recipe = Recipes.query.filter_by(name=post_data['name']).\
+            filter_by(category_id=category_id).filter_by(user_id=user_id).first()
+        if not recipe:
 
-                response.status_code = 201
-                return response
+            if post_data:
+                name = post_data['name']
+                time = post_data['time']
+                ingredients = post_data['ingredients']
+                direction = post_data['direction']
+
+                if name and time and ingredients and direction:
+                    recipe = Recipes(name=name.strip(' '), time=time.strip(' '),
+                                     ingredients=ingredients.strip(' '), direction=direction.strip(' '),
+                                     category_id=category_id)
+                    recipe.save()
+                    obj = {
+                        "id": recipe.id,
+                        "name": recipe.name,
+                        "time": recipe.time,
+                        "ingredients": recipe.ingredients,
+                        "direction": recipe.direction,
+                        "category_id": recipe.category_id,
+                        "date_created": recipe.date_created,
+                        "date_modified": recipe.date_modified,
+                        "user_id": recipe.user_id
+                    }
+                    response = jsonify({
+                        "message": "Recipe added successfully",
+                        "status": "success",
+                        "recipe": obj
+                    })
+
+                    response.status_code = 201
+                    return response
+            response = jsonify({
+                "message": "Name or time or ingredients or direction cannot be empty",
+                "status": "error"
+            })
+            response.status_code = 400
+            return response
         response = jsonify({
-            "message": "Name or time or ingredients or direction cannot be empty",
+            "message": "Recipe already exists",
             "status": "error"
         })
-        response.status_code = 400
+        response.status_code = 401
         return response
 
 
@@ -693,8 +716,7 @@ class UserRecipes(Resource):
 
     def get(self, user_id, category_id, _id=None):
         """Gets a single recipe by id [ENDPOINT] GET /category/<int:category_id>/recipes/<int:_id> """
-
-        if not Categories.get_single(category_id):
+        if not Categories.query.filter_by(id=category_id).filter_by(user_id=user_id).first():
             response = jsonify({
                 "message": "Category does not exist",
                 "status": "error"
@@ -732,6 +754,14 @@ class UserRecipes(Resource):
     @api.expect(recipe_parser)
     def put(self, user_id, category_id, _id):
         """Handles updating an existing recipe [ENDPOINT] PUT /categories/<category_id>/recipes/<id>"""
+        if not Categories.query.filter_by(id=category_id).filter_by(user_id=user_id).first():
+            response = jsonify({
+                "message": "Category does not exist",
+                "status": "error"
+            })
+            response.status_code = 401
+            return response
+
         recipe = Recipes.get_single(_id, category_id)
         if recipe:
             post_data = recipe_parser.parse_args()
@@ -776,6 +806,14 @@ class UserRecipes(Resource):
 
     def delete(self, user_id, category_id, _id):
         """Deletes a single recipe by id [ENDPOINT] DELETE /category/<int:category_id>/recipes/<int:_id> """
+        if not Categories.query.filter_by(id=category_id).filter_by(user_id=user_id).first():
+            response = jsonify({
+                "message": "Category does not exist",
+                "status": "error"
+            })
+            response.status_code = 401
+            return response
+
         recipe = Recipes.get_single(_id, category_id)
         if recipe:
             recipe.delete()
