@@ -84,7 +84,6 @@ class Categories(db.Model):
     """This class defines Categories tables."""
 
     __tablename__ = 'categories'
-
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255))
     desc = db.Column(db.String(255))
@@ -121,9 +120,9 @@ class Categories(db.Model):
         return Categories.query.filter_by(user_id=user_id)
 
     @staticmethod
-    def get_single(id):
+    def get_single(_id):
         """Returns all available Categories for a given user."""
-        return Categories.query.filter_by(id=id).first()
+        return Categories.query.filter_by(id=_id).first()
 
     def delete(self):
         """Deletes a given Category"""
@@ -146,6 +145,7 @@ class Recipes(db.Model):
     ingredients = db.Column(db.String(256))
     direction = db.Column(db.String(256))
     category_id = db.Column(db.Integer, db.ForeignKey(Categories.id))
+    user_id = db.Column(db.Integer, db.ForeignKey(Users.id))
     date_created = db.Column(db.DateTime, default=db.func.current_timestamp())
     date_modified = db.Column(
         db.DateTime, default=db.func.current_timestamp(),
