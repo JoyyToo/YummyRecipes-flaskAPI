@@ -112,18 +112,18 @@ http://127.0.0.1:5000/category?q=example
 | url | Method|  Description| Authentication |
 | --- | --- | --- | --- |
 | /register | POST | Registers new user | FALSE
-| /login | POST | Handles POST request for /auth/login | TRUE
+| /login | POST | Handles POST request for /auth/login | FALSE
 | /logout | GET | Logs out a user | TRUE
 | /reset-password | POST | Reset user password | TRUE
 | /category | GET | Get every category of logged in user|TRUE
-| /category/{_id} | GET | Get category with {id} of logged in user|TRUE
+| /category/{category_id} | GET | Get a single category|TRUE
 | /category | POST | Create a new category|TRUE
-| /category/{_id}  | PUT | Update a category with {id} of logged in user|TRUE
-| /category/{_id} | DELETE | Delete category with {id} of logged in user|TRUE
-| /recipe | POST | Creates a recipe|TRUE
-| /recipes/{id} | GET | Gets a single recipe|TRUE
-| /recipe/{id} | PUT | Updates a single recipe|TRUE
-| /recipe/{id} | DELETE | Deletes a single recipe|TRUE
+| /category/{category_id}  | PUT | Update a single category|TRUE
+| /category/{category_id} | DELETE | Delete a single category|TRUE
+| /category/{category_id}/recipes | POST | Creates a recipe|TRUE
+| /category/{category_id}/recipes/{_id} | GET | Gets a single recipe|TRUE
+| /category/{category_id}/recipes/{_id} | PUT | Updates a single recipe|TRUE
+| /category/{category_id}/recipes/{_id} | DELETE | Deletes a single recipe|TRUE
 
 
 ### Testing and API documentation
