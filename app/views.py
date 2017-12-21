@@ -5,9 +5,14 @@ from flask_bcrypt import Bcrypt
 from app import api, Resource, reqparse, app
 from app.models import Users, Categories, Recipes, Sessions
 
+INVALID_CHAR = re.compile(r"[<>/{}[\]~`*!@#$%^&()=+]")
+
+
 # namespaces
 auth_namespace = api.namespace('auth', description="Authentication/Authorization operations.")
-category_namespace = api.namespace('category', description="Category operations.")
+category_namespace = api.namespace('category', description="Category operations.", path="/category")
+recipe_namespace = api.namespace('recipe', description="Recipe operations.",
+                                 path="/category/<int:category_id>/recipes")
 
 
 def token_required(f):
@@ -66,12 +71,18 @@ class UserRegistration(Resource):
             # There is no user, try to register them
             try:
 
-                email = args['email']
-                username = args['username']
-                password = args['password']
+                email = args['email'].strip()
+                username = args['username'].strip()
+                password = args['password'].strip()
                 regex = r"(^[a-zA-Z0-9_.]+@[a-zA-Z0-9-]+\.[a-z]+$)"
                 if re.match(regex, email):
                     if username and password:
+                        if INVALID_CHAR.search(username):
+                            response = jsonify({
+                                "message": "Username contains invalid characters",
+                                "status": "error"})
+                            response.status_code = 400
+                            return response
 
                         if len(password) < 6:
                             response = jsonify({
@@ -80,8 +91,8 @@ class UserRegistration(Resource):
                             response.status_code = 400
                             return response
 
-                        user = Users(email=email.strip(' '), username=username.strip(' '),
-                                     password=password.strip(' '))
+                        user = Users(email=email, username=username,
+                                     password=password)
                         user.save()
                         session = Sessions(user.id)
                         session.save()
@@ -174,9 +185,10 @@ class UserLogin(Resource):
 class UserLogout(Resource):
     method_decorators = [token_required]
 
-    def get(self, user_id):
+    @staticmethod
+    def get(user_id):
         """Handles GET request for /auth/logout"""
-        session = Sessions.logout(user_id)
+        Sessions.logout(user_id)
 
         response = jsonify({
             "message": "You logged out successfully.",
@@ -251,7 +263,7 @@ class UserCategory(Resource):
     def get(self, user_id, _id=None):
         """Gets all categories [ENDPOINT] GET /category"""
         args = category_get_parser.parse_args()
-        q = args['q']
+        q = request.values.get('q', '').strip().lower()
         page = args['page']
         limit = args['limit']
 
@@ -295,7 +307,7 @@ class UserCategory(Resource):
                 for category in user_categories:
                     obj = {
                         "id": category.id,
-                        "name": category.name,
+                        "name": category.name.title(),
                         "desc": category.desc,
                         "date_created": category.date_created,
                         "date_modified": category.date_modified,
@@ -331,7 +343,7 @@ class UserCategory(Resource):
             for category in _category.items:
                 obj = {
                           "id": category.id,
-                          "name": category.name,
+                          "name": category.name.title(),
                           "desc": category.desc,
                           "date_created": category.date_created,
                           "date_modified": category.date_modified,
@@ -359,19 +371,26 @@ class UserCategory(Resource):
         """Handles adding a new category [ENDPOINT] POST /category"""
         post_data = category_parser.parse_args()
 
-        category = Categories.query.filter_by(name=post_data['name']).filter_by(user_id=user_id).first()
+        category = Categories.query.filter_by(name=post_data['name'].strip().lower()).filter_by(user_id=user_id).first()
         if not category:
 
             if post_data:
-                name = post_data['name']
-                desc = post_data['desc']
+                name = post_data['name'].strip().lower()
+                desc = post_data['desc'].strip().lower()
 
                 if name and desc:
-                    category = Categories(name=name.strip(' '), desc=desc.strip(' '), user_id=user_id)
+                    if Categories.validate_input(name=name, desc=desc):
+                        response = jsonify({
+                            "message": "{} contains invalid characters".format(
+                                Categories.validate_input(name=name, desc=desc)),
+                            "status": "error"})
+                        response.status_code = 400
+                        return response
+                    category = Categories(name=name, desc=desc, user_id=user_id)
                     category.save()
                     obj = {
                         "id": category.id,
-                        "name": category.name,
+                        "name": category.name.title(),
                         "desc": category.desc,
                         "date_created": category.date_created,
                         "date_modified": category.date_modified,
@@ -409,7 +428,8 @@ category_parser.add_argument('desc', type=str, help='Category Description', loca
 class UserCategories(Resource):
     method_decorators = [token_required]
 
-    def get(self, user_id, _id=None):
+    @staticmethod
+    def get(user_id, _id=None):
         """Gets a single category by id [ENDPOINT] GET /category/<id>"""
 
         if _id:
@@ -418,7 +438,7 @@ class UserCategories(Resource):
 
                 obj = {
                     "id": category.id,
-                    "name": category.name,
+                    "name": category.name.title(),
                     "desc": category.desc,
                     "date_created"
                     "": category.date_created,
@@ -447,13 +467,33 @@ class UserCategories(Resource):
         if category:
             post_data = category_parser.parse_args()
             if post_data:
-                name = post_data['name']
-                desc = post_data['desc']
+                name = post_data['name'].strip().lower()
+                desc = post_data['desc'].strip().lower()
+                category_check = Categories.query.filter_by(name=name.strip().lower()).\
+                    filter_by(user_id=user_id).first()
+
                 if name and desc:
-                    category.update(name, desc, _id)
+                    if Categories.validate_input(name=name, desc=desc):
+                        response = jsonify({
+                            "message": "{} contains invalid characters".format(
+                                Categories.validate_input(name=name, desc=desc)),
+                            "status": "error"})
+                        response.status_code = 400
+                        return response
+                    if not category_check:
+                        category.update(name, desc, _id)
+                    else:
+                        response = jsonify({
+                            "message": "Category already exist",
+                            "status": "error"
+                        })
+
+                        response.status_code = 401
+                        return response
+
                     obj = {
                         "id": category.id,
-                        "name": category.name,
+                        "name": category.name.title(),
                         "desc": category.desc,
                         "date_created": category.date_created,
                         "date_modified": category.date_modified,
@@ -481,7 +521,8 @@ class UserCategories(Resource):
         response.status_code = 401
         return response
 
-    def delete(self, user_id, _id):
+    @staticmethod
+    def delete(user_id, _id):
         """Handles deleting an existing category [ENDPOINT] DELETE /category/<id>"""
 
         category = Categories.query.filter_by(id=_id).filter_by(user_id=user_id).first()
@@ -512,7 +553,7 @@ recipe_parser.add_argument('ingredients', type=str, help='Ingredients', location
 recipe_parser.add_argument('direction', type=str, help='Directions', location='form', required=True)
 
 
-@category_namespace.route('/<int:category_id>/recipes', methods=['GET', 'POST'])
+@recipe_namespace.route('', methods=['GET', 'POST'])
 class UserRecipe(Resource):
     method_decorators = [token_required]
 
@@ -520,7 +561,7 @@ class UserRecipe(Resource):
     def get(self, user_id, category_id, _id=None):
         """Gets all Recipes[ENDPOINT] GET /category/<int:category_id>/recipes """
         args = recipe_get_parser.parse_args()
-        q = args['q']
+        q = request.values.get('q', '').strip().lower()
         page = args['page']
         limit = args['limit']
 
@@ -572,7 +613,7 @@ class UserRecipe(Resource):
                 for recipe in user_recipes:
                     obj = {
                         "id": recipe.id,
-                        "name": recipe.name,
+                        "name": recipe.name.title(),
                         "time": recipe.time,
                         "ingredients": recipe.ingredients,
                         "direction": recipe.direction,
@@ -626,7 +667,7 @@ class UserRecipe(Resource):
             for rec in _urecipes.items:
                 obj = {
                     "id": rec.id,
-                    "name": rec.name,
+                    "name": rec.name.title(),
                     "time": rec.time,
                     "ingredients": rec.ingredients,
                     "direction": rec.direction,
@@ -636,49 +677,52 @@ class UserRecipe(Resource):
                 }
                 _recipes2.append(obj)
 
-            response = jsonify({
-                "recipes": _recipes2,
-                "status": "success"
-            })
+            response = jsonify({'Next Page': _urecipes.next_num,
+                                'Prev Page': _urecipes.prev_num,
+                                'Has next': _urecipes.has_next,
+                                'Has previous': _urecipes.has_prev}, _recipes2)
             response.status_code = 200
             return response
-        response = jsonify({
-            "message": "Recipes not available at the moment",
-            "status": "error"
-        })
-        response.status_code = 401
-        return response
 
     @api.expect(recipe_parser)
     def post(self, user_id, category_id):
         """Handles adding a new recipe [ENDPOINT] POST /categories/<category_id>/recipe"""
         post_data = recipe_parser.parse_args()
 
-        recipe = Recipes.query.filter_by(name=post_data['name']).\
-            filter_by(category_id=category_id).filter_by(user_id=user_id).first()
+        recipe = Recipes.query.filter_by(name=post_data['name'].strip().lower()).\
+            filter_by(category_id=category_id).first()
         if not recipe:
 
             if post_data:
-                name = post_data['name']
-                time = post_data['time']
-                ingredients = post_data['ingredients']
-                direction = post_data['direction']
+                name = post_data['name'].strip().lower()
+                time = post_data['time'].strip().lower()
+                ingredients = post_data['ingredients'].strip().lower()
+                direction = post_data['direction'].strip().lower()
 
                 if name and time and ingredients and direction:
-                    recipe = Recipes(name=name.strip(' '), time=time.strip(' '),
-                                     ingredients=ingredients.strip(' '), direction=direction.strip(' '),
+                    if Categories.validate_input(name=name, time=time,
+                                                 ingredients=ingredients, direction=direction):
+                        response = jsonify({
+                            "message": "{} contains invalid characters".format(
+                                Categories.validate_input(name=name, time=time,
+                                                          ingredients=ingredients, direction=direction)),
+                            "status": "error"})
+                        response.status_code = 400
+                        return response
+                    recipe = Recipes(name=name, time=time,
+                                     ingredients=ingredients, direction=direction,
                                      category_id=category_id)
                     recipe.save()
                     obj = {
                         "id": recipe.id,
-                        "name": recipe.name,
+                        "name": recipe.name.title(),
                         "time": recipe.time,
                         "ingredients": recipe.ingredients,
                         "direction": recipe.direction,
                         "category_id": recipe.category_id,
                         "date_created": recipe.date_created,
                         "date_modified": recipe.date_modified,
-                        "user_id": recipe.user_id
+
                     }
                     response = jsonify({
                         "message": "Recipe added successfully",
@@ -710,11 +754,12 @@ recipe_parser.add_argument('ingredients', type=str, help='Ingredients', location
 recipe_parser.add_argument('direction', type=str, help='Directions', location='form', required=True)
 
 
-@category_namespace.route('/<int:category_id>/recipes/<int:_id>', methods=['GET', 'PUT', 'DELETE'])
+@recipe_namespace.route('/<int:_id>', methods=['GET', 'PUT', 'DELETE'])
 class UserRecipes(Resource):
     method_decorators = [token_required]
 
-    def get(self, user_id, category_id, _id=None):
+    @staticmethod
+    def get(user_id, category_id, _id=None):
         """Gets a single recipe by id [ENDPOINT] GET /category/<int:category_id>/recipes/<int:_id> """
         if not Categories.query.filter_by(id=category_id).filter_by(user_id=user_id).first():
             response = jsonify({
@@ -736,7 +781,7 @@ class UserRecipes(Resource):
 
             obj = {
                 "id": recipe.id,
-                "name": recipe.name,
+                "name": recipe.name.title(),
                 "time": recipe.time,
                 "ingredients": recipe.ingredients,
                 "direction": recipe.direction,
@@ -765,32 +810,54 @@ class UserRecipes(Resource):
         recipe = Recipes.get_single(_id, category_id)
         if recipe:
             post_data = recipe_parser.parse_args()
+
             if post_data:
-                name = post_data['name']
-                time = post_data['time']
-                ingredients = post_data['ingredients']
-                direction = post_data['direction']
+                name = post_data['name'].strip().lower()
+                time = post_data['time'].strip().lower()
+                ingredients = post_data['ingredients'].strip().lower()
+                direction = post_data['direction'].strip().lower()
 
-                recipe = Recipes.update(name=name, time=time, ingredients=ingredients,
-                                        direction=direction, _id=_id)
+                recipe_check = Recipes.query.filter_by(name=post_data['name'].strip().lower()). \
+                    filter_by(category_id=category_id).first()
 
-                obj = {
-                    "id": recipe.id,
-                    "name": recipe.name,
-                    "time": recipe.time,
-                    "ingredients": recipe.ingredients,
-                    "direction": recipe.direction,
-                    "category_id": recipe.category_id,
-                    "date_created": recipe.date_created,
-                    "date_modified": recipe.date_modified,
-                }
-                response = jsonify({
-                    "message": "Recipe updated successfully",
-                    "status": "success",
-                    "recipe": obj
-                })
-                response.status_code = 200
-                return response
+                if name and time and ingredients and ingredients:
+                    if Categories.validate_input(name=name, time=time,
+                                                 ingredients=ingredients, direction=direction):
+                        response = jsonify({
+                            "message": "{} contains invalid characters".format(
+                                Categories.validate_input(name=name, time=time,
+                                                          ingredients=ingredients, direction=direction)),
+                            "status": "error"})
+                        response.status_code = 400
+                        return response
+                    if not recipe_check:
+                        recipe = Recipes.update(name=name, time=time, ingredients=ingredients,
+                                                direction=direction, _id=_id)
+                    else:
+                        response = jsonify({
+                            "message": "Recipe already exists",
+                            "status": "error"
+                        })
+                        response.status_code = 401
+                        return response
+
+                    obj = {
+                        "id": recipe.id,
+                        "name": recipe.name.title(),
+                        "time": recipe.time,
+                        "ingredients": recipe.ingredients,
+                        "direction": recipe.direction,
+                        "category_id": recipe.category_id,
+                        "date_created": recipe.date_created,
+                        "date_modified": recipe.date_modified,
+                    }
+                    response = jsonify({
+                        "message": "Recipe updated successfully",
+                        "status": "success",
+                        "recipe": obj
+                    })
+                    response.status_code = 200
+                    return response
             response = jsonify({
                 "message": "Name or time or ingredients or direction cannot be empty",
                 "status": "error"
@@ -804,7 +871,8 @@ class UserRecipes(Resource):
         response.status_code = 401
         return response
 
-    def delete(self, user_id, category_id, _id):
+    @staticmethod
+    def delete(user_id, category_id, _id):
         """Deletes a single recipe by id [ENDPOINT] DELETE /category/<int:category_id>/recipes/<int:_id> """
         if not Categories.query.filter_by(id=category_id).filter_by(user_id=user_id).first():
             response = jsonify({
