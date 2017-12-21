@@ -58,6 +58,20 @@ class CategoriesTestCase(BaseTestCase):
         )
         self.assertEqual(res.status_code, 401)
 
+    def test_creation_with_invalid_characters(self):
+        """Test api can get categories with invalid characters"""
+        req = self.authenticate()
+
+        jwt_token = json.loads(req.data.decode())['jwt_token']
+
+        # create a category by making a POST request
+        req = self.client().post(
+            'api/v1/category',
+            headers=dict(Authorization="Bearer " + jwt_token),
+            data={'name': '@@%', 'desc': '$#'})
+        self.assertIn("name contains invalid characters", str(req.data))
+        self.assertEqual(req.status_code, 400)
+
     def test_if_user_can_retrieve_categories_by_id(self):
         """Test api can get categories by id"""
         req = self.authenticate()
@@ -83,11 +97,12 @@ class CategoriesTestCase(BaseTestCase):
 
         jwt_token = json.loads(req.data.decode())['jwt_token']
 
-        res = self.client().get(
-            'api/v1/category/2',
+        req = self.client().get(
+            'api/v1/category',
             headers=dict(Authorization="Bearer " + jwt_token),
         )
-        self.assertEqual(res.status_code, 401)
+        self.assertIn("No categories available at the moment", str(req.data))
+        self.assertEqual(req.status_code, 401)
 
     def test_category_editing(self):
         """Test category can be updated"""
@@ -110,8 +125,16 @@ class CategoriesTestCase(BaseTestCase):
         req = self.client().put(
             'api/v1/category/1',
             headers=dict(Authorization="Bearer " + jwt_token),
-            data=self.category)
+            data={'name': 'new', 'desc': 'new'})
         self.assertEqual(req.status_code, 200)
+
+        # edit category with invalid characters
+        req = self.client().put(
+            'api/v1/category/1',
+            headers=dict(Authorization="Bearer " + jwt_token),
+            data={'name': 'new', 'desc': '$%&'})
+        self.assertIn("desc contains invalid characters", str(req.data))
+        self.assertEqual(req.status_code, 400)
 
         # get edited category
         req = self.client().get(
@@ -193,7 +216,7 @@ class CategoriesTestCase(BaseTestCase):
             headers=dict(Authorization="Bearer " + jwt_token), data=self.category
         )
         self.assertEqual(res.status_code, 200)
-        self.assertIn('nametrf', str(req.data))
+        self.assertIn('nametrf'.title(), str(req.data))
 
     def test_search_non_existing_category(self):
         """Test searching non existing category"""
@@ -291,7 +314,3 @@ class CategoriesTestCase(BaseTestCase):
         )
         self.assertEqual(res.status_code, 400)
         self.assertIn('Limit number must be a positive integer!!', str(res.data))
-
-
-
-

@@ -5,7 +5,7 @@ from tests.base_testcase import BaseTestCase
 class RecipesTestCase(BaseTestCase):
     """Test recipes"""
 
-    def test_category_creation(self):
+    def test_recipe_creation(self):
         """Test recipe can be created"""
 
         req = self.authenticate()
@@ -30,6 +30,38 @@ class RecipesTestCase(BaseTestCase):
                                  data={'name': '', 'time': '', 'ingredients': '', 'direction': ''})
         self.assertIn("Name or time or ingredients or direction cannot be empty", str(req.data))
         self.assertEqual(req.status_code, 400)
+
+        # create already existing recipe
+        self.client().post(
+            'api/v1/category',
+            headers=dict(Authorization="Bearer " + jwt_token),
+            data=self.recipe)
+        req = self.client().post('api/v1/category/1/recipes',
+                                 headers=dict(Authorization="Bearer " + jwt_token),
+                                 data=self.recipe)
+
+        self.assertEqual(req.status_code, 401)
+        self.assertIn('Recipe already exists', str(req.data))
+
+    def test_recipe_creation_with_invalid_characters(self):
+        """Test recipe can be created with invalid characters"""
+
+        req = self.authenticate()
+
+        jwt_token = json.loads(req.data.decode())['jwt_token']
+
+        # create a category by making a POST request
+        self.client().post(
+            'api/v1/category',
+            headers=dict(Authorization="Bearer " + jwt_token),
+            data=self.category)
+        req = self.client().post('api/v1/category/1/recipes',
+                                 headers=dict(Authorization="Bearer " + jwt_token),
+                                 data={'name': '$$$', 'time': 'whedio', 'ingredients': 'wkehri',
+                                       'direction': 'weiuyiu'})
+
+        self.assertEqual(req.status_code, 400)
+        self.assertIn('name contains invalid characters', str(req.data))
 
     def test_if_user_can_retrieve_all_recipes(self):
         """Test api can get all recipes"""
@@ -81,17 +113,42 @@ class RecipesTestCase(BaseTestCase):
 
         jwt_token = json.loads(req.data.decode())['jwt_token']
 
-        # create a category by making a POST request
-        self.client().post(
-            'api/v1/category',
+        # get with non existing category by id
+        req = self.client().get(
+            'api/v1/category/1/recipes/1',
             headers=dict(Authorization="Bearer " + jwt_token),
-            data=self.category)
+        )
+        self.assertIn("Category does not exist", str(req.data))
+        self.assertEqual(req.status_code, 401)
 
-        res = self.client().get(
+        # get with non existing category
+        req = self.client().get(
             'api/v1/category/1/recipes',
             headers=dict(Authorization="Bearer " + jwt_token),
         )
-        self.assertEqual(res.status_code, 401)
+        self.assertIn("Category does not exist", str(req.data))
+        self.assertEqual(req.status_code, 401)
+
+        # create a category by making a POST request
+        self.client().post(
+            'api/v1/category',
+            headers=dict(Authorization="Bearer " + jwt_token), data=self.category)
+
+        # get with category and non existing recipe by id
+        req = self.client().get(
+            'api/v1/category/1/recipes/1',
+            headers=dict(Authorization="Bearer " + jwt_token),
+        )
+        self.assertIn("Recipe not available at the moment", str(req.data))
+        self.assertEqual(req.status_code, 401)
+
+        # get with category and non existing recipe
+        req = self.client().get(
+            'api/v1/category/1/recipes',
+            headers=dict(Authorization="Bearer " + jwt_token),
+        )
+        self.assertIn("Recipe not available at the moment", str(req.data))
+        self.assertEqual(req.status_code, 401)
 
     def test_if_get_recipe_from_non_existing_category(self):
         """Test if api can get recipe from non_existing category"""
@@ -99,11 +156,13 @@ class RecipesTestCase(BaseTestCase):
 
         jwt_token = json.loads(req.data.decode())['jwt_token']
 
-        res = self.client().get(
-            'api/v1/category/1/recipes',
+        # get with non existing category
+        req = self.client().get(
+            'api/v1/category/1/recipes/1',
             headers=dict(Authorization="Bearer " + jwt_token),
-        )
-        self.assertEqual(res.status_code, 401)
+            )
+        self.assertIn("Category does not exist", str(req.data))
+        self.assertEqual(req.status_code, 401)
 
     def test_recipe_editing(self):
         """Test recipe can be edited"""
@@ -122,26 +181,34 @@ class RecipesTestCase(BaseTestCase):
                                  data=self.recipe)
         self.assertEqual(req.status_code, 201)
 
-        # get the category in json
+        # get the recipe in json
         req = json.loads(req.data.decode())
 
-        # edit category
+        # edit recipe
         req = self.client().put(
             'api/v1/category/1/recipes/1',
             headers=dict(Authorization="Bearer " + jwt_token),
-            data=self.recipe)
+            data={'name': 'new', 'time': 'new', 'ingredients': 'new', 'direction': 'new'})
         self.assertEqual(req.status_code, 200)
 
-        # get edited category
+        # edit recipe with invalid characters
+        req = self.client().put(
+            'api/v1/category/1/recipes/1',
+            headers=dict(Authorization="Bearer " + jwt_token),
+            data={'name': '&^%', 'time': 'new', 'ingredients': 'new', 'direction': 'new'})
+        self.assertIn("name contains invalid characters", str(req.data))
+        self.assertEqual(req.status_code, 400)
+
+        # get edited recipe
         req = self.client().get(
             'api/v1/category/1/recipes/1',
             headers=dict(Authorization="Bearer " + jwt_token))
-        self.assertIn('meat', str(req.data))
+        self.assertIn('new', str(req.data))
 
-        # check if fields are empty
-        req = self.client().post('api/v1/category/1/recipes',
-                                 headers=dict(Authorization="Bearer " + jwt_token),
-                                 data={'name': '', 'time': '', 'ingredients': '', 'direction': ''})
+        # check edit with  fields are empty
+        req = self.client().put('api/v1/category/1/recipes/1',
+                                headers=dict(Authorization="Bearer " + jwt_token),
+                                data={'name': '', 'time': '', 'ingredients': '', 'direction': ''})
         self.assertIn("Name or time or ingredients or direction cannot be empty", str(req.data))
         self.assertEqual(req.status_code, 400)
 
@@ -157,6 +224,18 @@ class RecipesTestCase(BaseTestCase):
             'api/v1/category/1/recipes/1',
             headers=dict(Authorization="Bearer " + jwt_token),
             )
+        self.assertIn("Category does not exist", str(req.data))
+        self.assertEqual(req.status_code, 401)
+
+        # edit the recipe with category but no recipe
+        self.client().post(
+            'api/v1/category',
+            headers=dict(Authorization="Bearer " + jwt_token),
+            data=self.category)
+        req = self.client().put(
+            'api/v1/category/1/recipes/1',
+            headers=dict(Authorization="Bearer " + jwt_token), )
+        self.assertIn("Recipe not found", str(req.data))
         self.assertEqual(req.status_code, 401)
 
     def test_recipe_deletion(self):
@@ -191,10 +270,22 @@ class RecipesTestCase(BaseTestCase):
 
         jwt_token = json.loads(req.data.decode())['jwt_token']
 
-        # delete the category
+        # delete the recipe without category
         req = self.client().delete(
             'api/v1/category/1/recipes/1',
             headers=dict(Authorization="Bearer " + jwt_token), )
+        self.assertIn("Category does not exist", str(req.data))
+        self.assertEqual(req.status_code, 401)
+
+        # delete the recipe with category but no recipe
+        self.client().post(
+            'api/v1/category',
+            headers=dict(Authorization="Bearer " + jwt_token),
+            data=self.category)
+        req = self.client().delete(
+            'api/v1/category/1/recipes/1',
+            headers=dict(Authorization="Bearer " + jwt_token), )
+        self.assertIn("Recipe does not exist", str(req.data))
         self.assertEqual(req.status_code, 401)
 
     def test_search_existing_recipe(self):
@@ -215,10 +306,10 @@ class RecipesTestCase(BaseTestCase):
 
         res = self.client().get(
             'api/v1/category/1/recipes?q=mea',
-            headers=dict(Authorization="Bearer " + jwt_token), data=self.category
+            headers=dict(Authorization="Bearer " + jwt_token),
         )
         self.assertEqual(res.status_code, 200)
-        self.assertIn('meat pie', str(req.data))
+        self.assertIn('meat pie'.title(), str(req.data))
 
     def test_search_non_existing_recipe(self):
         """Test api can searching non existing recipe"""
@@ -238,7 +329,7 @@ class RecipesTestCase(BaseTestCase):
 
         res = self.client().get(
             'api/v1/category/1/recipes?q=des',
-            headers=dict(Authorization="Bearer " + jwt_token), data=self.category
+            headers=dict(Authorization="Bearer " + jwt_token),
         )
         self.assertEqual(res.status_code, 401)
 
@@ -331,15 +422,4 @@ class RecipesTestCase(BaseTestCase):
         )
         self.assertEqual(res.status_code, 400)
         self.assertIn('Limit number must be a positive integer!!', str(res.data))
-
-
-
-
-
-
-
-
-
-
-
 
