@@ -2,6 +2,9 @@ import jwt
 from datetime import datetime, timedelta
 from app import db, app
 from flask_bcrypt import Bcrypt
+import re
+
+INVALID_CHAR = re.compile(r"[<>/{}[\]~`*!@#$%^&()=+]")
 
 
 class Users(db.Model):
@@ -31,7 +34,8 @@ class Users(db.Model):
         db.session.add(self)
         db.session.commit()
 
-    def generate_token(self, user_id):
+    @staticmethod
+    def generate_token(user_id):
         """Generates access token for a user"""
         try:
             # set up a payload with an expiration time
@@ -128,6 +132,13 @@ class Categories(db.Model):
         """Deletes a given Category"""
         db.session.delete(self)
         db.session.commit()
+
+    @staticmethod
+    def validate_input(**kwargs):
+        if kwargs:
+            for key in kwargs:
+                if INVALID_CHAR.search(kwargs[key]):
+                    return key
 
     def __repr__(self):
         """Returns a representation of a Category."""
@@ -236,4 +247,3 @@ class Sessions(db.Model):
             return status
 
         return False
-
