@@ -267,20 +267,6 @@ class UserCategory(Resource):
         page = args['page']
         limit = args['limit']
 
-        if page:
-            try:
-                page = int(page)
-                if page < 1:
-                    return {
-                               "message": "Page number must be a positive integer!! "
-                           }, 400
-            except Exception:
-                return {
-                           "message": "Invalid page value!!"
-                       }, 400
-        else:
-            page = 1
-
         if limit:
             try:
                 limit = int(limit)
@@ -294,6 +280,26 @@ class UserCategory(Resource):
                        }, 400
         else:
             limit = 5
+
+        if page:
+            usrcategories = Categories.get_all(user_id).count()
+            pages = int(usrcategories / limit)
+            if page > pages:
+                return {
+                           "message": "Page not found"
+                       }, 404
+            try:
+                page = int(page)
+                if page < 1:
+                    return {
+                               "message": "Page number must be a positive integer!! "
+                           }, 400
+            except Exception:
+                return {
+                           "message": "Invalid page value!!"
+                       }, 400
+        else:
+            page = 1
 
         if q:
             _categories = Categories.query. \
@@ -573,20 +579,6 @@ class UserRecipe(Resource):
             response.status_code = 401
             return response
 
-        if page:
-            try:
-                page = int(page)
-                if page < 1:
-                    return {
-                               "message": "Page number must be a positive integer!! "
-                           }, 400
-            except Exception:
-                return {
-                           "message": "Invalid page value!!"
-                       }, 400
-        else:
-            page = 1
-
         if limit:
             try:
                 limit = int(limit)
@@ -600,6 +592,26 @@ class UserRecipe(Resource):
                        }, 400
         else:
             limit = 5
+
+        if page:
+            usrrecipes = Categories.get_all(user_id).count()
+            pages = int(usrrecipes / limit)
+            if page > pages:
+                return {
+                           "message": "Page not found"
+                       }, 404
+            try:
+                page = int(page)
+                if page < 1:
+                    return {
+                               "message": "Page number must be a positive integer!! "
+                           }, 400
+            except Exception:
+                return {
+                           "message": "Invalid page value!!"
+                       }, 400
+        else:
+            page = 1
 
         if q:
             _recipes = Recipes.query. \
