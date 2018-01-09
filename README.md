@@ -120,8 +120,9 @@ http://127.0.0.1:5000/category?q=example
 | --- | --- | --- | --- |
 | /register | POST | Registers new user | FALSE
 | /login | POST | Handles POST request for /auth/login | FALSE
-| /logout | GET | Logs out a user | TRUE
-| /reset-password | POST | Reset user password | TRUE
+| /logout | POST | Logs out a user | TRUE
+| /reset-password | POST | Reset user password | FALSE
+| /new-password/<token>| POST | Enter new password | FALSE
 | /category | GET | Get every category of logged in user|TRUE
 | /category/{category_id} | GET | Get a single category|TRUE
 | /category | POST | Create a new category|TRUE
