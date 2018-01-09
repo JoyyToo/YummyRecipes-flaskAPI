@@ -13,8 +13,8 @@ class Users(db.Model):
     __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(256), nullable=False, unique=True)
-    username = db.Column(db.String(256), nullable=False)
+    email = db.Column(db.String(40), nullable=False, unique=True)
+    username = db.Column(db.String(40), nullable=False)
     password = db.Column(db.String(256), nullable=False)
     categories = db.relationship(
         'Categories', order_by='Categories.id', cascade='all, delete-orphan')
@@ -89,7 +89,7 @@ class Categories(db.Model):
 
     __tablename__ = 'categories'
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255))
+    name = db.Column(db.String(30))
     desc = db.Column(db.String(255))
     date_created = db.Column(db.DateTime, default=db.func.current_timestamp())
     date_modified = db.Column(
@@ -151,10 +151,10 @@ class Recipes(db.Model):
     __tablename__ = "recipes"
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(256))
-    time = db.Column(db.String(256))
+    name = db.Column(db.String(30))
+    time = db.Column(db.String(30))
     ingredients = db.Column(db.String(256))
-    direction = db.Column(db.String(256))
+    procedure = db.Column(db.String(256))
     category_id = db.Column(db.Integer, db.ForeignKey(Categories.id))
     user_id = db.Column(db.Integer, db.ForeignKey(Users.id))
     date_created = db.Column(db.DateTime, default=db.func.current_timestamp())
@@ -162,14 +162,15 @@ class Recipes(db.Model):
         db.DateTime, default=db.func.current_timestamp(),
         onupdate=db.func.current_timestamp())
 
-    def __init__(self, name, time, ingredients, direction, category_id):
-        """Initialize Recipes with name, time, ingredient, direction, category_id"""
+    def __init__(self, name, time, ingredients, procedure, category_id, user_id):
+        """Initialize Recipes with name, time, ingredient, procedure, category_id"""
 
         self.name = name
         self.time = time
         self.ingredients = ingredients
-        self.direction = direction
+        self.procedure = procedure
         self.category_id = category_id
+        self.user_id = user_id
 
     def save(self):
         """Saves Recipes to the database"""
@@ -177,13 +178,13 @@ class Recipes(db.Model):
         db.session.commit()
 
     @staticmethod
-    def update(name, time, ingredients, direction, _id):
+    def update(name, time, ingredients, procedure, _id):
         """Updates an existing recipe"""
         recipe = Recipes.query.filter_by(id=_id).first()
         recipe.name = name
         recipe.time = time
         recipe.ingredients = ingredients
-        recipe.direction = direction
+        recipe.procedure = procedure
         recipe.save()
         return recipe
 
