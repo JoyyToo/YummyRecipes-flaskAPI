@@ -1,12 +1,20 @@
 from functools import wraps
-from flask import request, jsonify
+from flask import request, jsonify, url_for
 import re
+from itsdangerous import URLSafeTimedSerializer
 from flask_bcrypt import Bcrypt
-from app import api, Resource, reqparse, app
+from flask_mail import Mail, Message
+from app import api, Resource, app
 from app.models import Users, Categories, Recipes, Sessions
 
-INVALID_CHAR = re.compile(r"[<>/{}[\]~`*!@#$%^&()=+]")
+mail = Mail(app)
 
+recipients = []
+sender = 'Admin'
+
+s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
+
+INVALID_CHAR = re.compile(r"[<>/{}[\]~`*!@#$%^&()=+]")
 
 # namespaces
 auth_namespace = api.namespace('auth', description="Authentication/Authorization operations.")
@@ -29,10 +37,10 @@ def token_required(f):
                            "status": "error"
                        }, 403
         else:
-            return{
-                "message": "Unauthorized, Please login or register",
-                "status": "error"
-            }, 403
+            return {
+                       "message": "Unauthorized, Please login or register",
+                       "status": "error"
+                   }, 403
 
         if access_token:
             user_id = Users.decode_token(access_token)
@@ -74,9 +82,19 @@ class UserRegistration(Resource):
                 email = args['email'].strip()
                 username = args['username'].strip()
                 password = args['password'].strip()
+
+                if len(email) > 40 or len(username) > 40:
+                    response = jsonify({
+                        "Message": "Please make the length of the email or username less than 40 characters",
+                        "Status": "error"
+                    })
+                    response.status_code = 400
+                    return response
+
                 regex = r"(^[a-zA-Z0-9_.]+@[a-zA-Z0-9-]+\.[a-z]+$)"
                 if re.match(regex, email):
                     if username and password:
+
                         if INVALID_CHAR.search(username):
                             response = jsonify({
                                 "message": "Username contains invalid characters",
@@ -186,8 +204,8 @@ class UserLogout(Resource):
     method_decorators = [token_required]
 
     @staticmethod
-    def get(user_id):
-        """Handles GET request for /auth/logout"""
+    def post(user_id):
+        """Handles POST request for /auth/logout"""
         Sessions.logout(user_id)
 
         response = jsonify({
@@ -198,51 +216,100 @@ class UserLogout(Resource):
         return response
 
 
+def email_notification(subject, recipients, _link):
+    msg = Message(subject, sender=sender, recipients=recipients)
+    msg.body = "Use the token to reset password in the app: {}".format(_link)
+    with app.app_context():
+        mail.send(msg)
+    return "\n\nEmail sent successfully\n\n"
+
+
 reset_parser = api.parser()
 reset_parser.add_argument('email', type=str, help='Email', location='form', required=True)
-reset_parser.add_argument('new password', type=str, help='Password', location='form', required=True)
 
 
 @auth_namespace.route('/reset-password')
 class ResetPasswordView(Resource):
-    method_decorators = [token_required]
 
     @api.expect(reset_parser)
-    def post(self, user_id):
+    def post(self):
         """Handles POST request for /auth/reset-password"""
         data = reset_parser.parse_args()
         email = data['email']
-        password = data['new password']
+
         regex = r"(^[a-zA-Z0-9_.]+@[a-zA-Z0-9-]+\.[a-z]+$)"
         if re.match(regex, email) and email.strip(' '):
-            if len(password.strip()) >= 6:
-                user = Users.query.filter_by(email=email).first()
-                if user:
-                    user.password = Bcrypt().generate_password_hash(password).decode()
-                    user.save()
-                    response = jsonify({
-                        'message': "Password reset. You can now login with new password."
-                    })
-                    response.status_code = 200
-                    return response
-                else:
-                    response = jsonify({
-                        'message': "User email does not exist."
-                    })
-                    response.status_code = 404
-                    return response
+            user = Users.query.filter_by(email=email).first()
+            if user:
+                token = s.dumps(email, salt='password-reset')
+                recipients.append(email)
+                _link = url_for('auth_new_password_view', token=token, _external=True)
+
+                email_notification('Confirm email', recipients, _link)
+
+                response = jsonify({
+                    'message': 'Email sent to : {} <br/>'.format(email),
+                    'status': 'success'
+                })
+                response.status_code = 200
+                return response
             else:
                 response = jsonify({
-                    'message': "Password must be 6 or more characters."
+                    'message': "User email does not exist.",
+                    'status': 'error'
                 })
-                response.status_code = 400
+                response.status_code = 404
                 return response
+
         else:
             response = jsonify({
-                'message': "Email Invalid. Do not include special characters."
+                'message': "Email Invalid. Do not include special characters.",
+                'status': 'error'
             })
             response.status_code = 400
             return response
+
+
+new_parser = api.parser()
+new_parser.add_argument('new password', type=str, help='New password', location='form')
+
+
+@auth_namespace.route('/new-password/<token>')
+class NewPasswordView(Resource):
+
+    @api.expect(new_parser)
+    def post(self, token):
+        data = new_parser.parse_args()
+        password = data['new password']
+
+        try:
+            email = s.loads(token, salt='password-reset', max_age=60 * 10)  # 24hrs
+            user = Users.query.filter_by(email=email).first()
+
+            if user:
+                if len(password) < 6:
+                    response = jsonify({
+                        "message": "Password must be more than 6 characters.",
+                        "status": "error"})
+                    response.status_code = 400
+                    return response
+                user.password = Bcrypt().generate_password_hash(password).decode()
+                user.save()
+                response = jsonify({
+                    "message": "Password for {} has been reset. You can now login".format(email, password),
+                    "status": "success"
+                })
+                response.status_code = 200
+                return response
+
+            response = jsonify({
+                "message": "Invalid user",
+                "status": "error"
+            })
+            response.status_code = 200
+            return response
+        except Exception as e:
+            return 'You are not allowed to do this operation'
 
 
 category_get_parser = api.parser()
@@ -260,7 +327,7 @@ class UserCategory(Resource):
     method_decorators = [token_required]
 
     @api.doc(parser=category_get_parser)
-    def get(self, user_id, _id=None):
+    def get(self, user_id):
         """Gets all categories [ENDPOINT] GET /category"""
         args = category_get_parser.parse_args()
         q = request.values.get('q', '').strip().lower()
@@ -282,8 +349,8 @@ class UserCategory(Resource):
             limit = 5
 
         if page:
-            usrcategories = Categories.get_all(user_id).count()
-            pages = int(usrcategories / limit)
+            usercategories = Categories.get_all(user_id).count()
+            pages = int(usercategories / limit)
             if page > pages:
                 return {
                            "message": "Page not found"
@@ -302,10 +369,10 @@ class UserCategory(Resource):
             page = 1
 
         if q:
-            _categories = Categories.query. \
+            categories = Categories.query. \
                 filter(Categories.name.like('%' + q + '%')).paginate(page, limit)
             user_categories = []
-            for x in _categories.items:
+            for x in categories.items:
                 if x.user_id == user_id:
                     user_categories.append(x)
             if user_categories:
@@ -331,11 +398,11 @@ class UserCategory(Resource):
                     "message": "Category '{}' not found".format(q),
                     "status": "error"
                 })
-                response.status_code = 401
+                response.status_code = 404
                 return response
 
         try:
-            _category = Categories.query.filter_by(user_id=user_id).paginate(page, limit, error_out=True)
+            recipe_category = Categories.query.filter_by(user_id=user_id).paginate(page, limit, error_out=True)
         except Exception as e:
             response = jsonify({
                 "message": str(e),
@@ -344,26 +411,26 @@ class UserCategory(Resource):
             response.status_code = 401
             return response
 
-        if _category:
-            _user_categories = []
-            for category in _category.items:
+        if recipe_category:
+            recipecategories = []
+            for category in recipe_category.items:
                 obj = {
-                          "id": category.id,
-                          "name": category.name.title(),
-                          "desc": category.desc,
-                          "date_created": category.date_created,
-                          "date_modified": category.date_modified,
-                          "user_id": category.user_id
-                      }
-                _user_categories.append(obj)
-            response = jsonify({'Next Page': _category.next_num,
-                                'Prev Page': _category.prev_num,
-                                'Has next': _category.has_next,
-                                'Has previous': _category.has_prev}, _user_categories
+                    "id": category.id,
+                    "name": category.name.title(),
+                    "desc": category.desc,
+                    "date_created": category.date_created,
+                    "date_modified": category.date_modified,
+                    "user_id": category.user_id
+                }
+                recipecategories.append(obj)
+            response = jsonify({'Next Page': recipe_category.next_num,
+                                'Prev Page': recipe_category.prev_num,
+                                'Has next': recipe_category.has_next,
+                                'Has previous': recipe_category.has_prev}, recipecategories
                                )
             response.status_code = 200
 
-            if not _user_categories:
+            if not recipecategories:
                 response = jsonify({
                     "message": "No categories available at the moment",
                     "status": "error"
@@ -373,7 +440,7 @@ class UserCategory(Resource):
             return response
 
     @api.expect(category_parser)
-    def post(self, user_id, _id=None):
+    def post(self, user_id):
         """Handles adding a new category [ENDPOINT] POST /category"""
         post_data = category_parser.parse_args()
 
@@ -383,6 +450,14 @@ class UserCategory(Resource):
             if post_data:
                 name = post_data['name'].strip().lower()
                 desc = post_data['desc'].strip().lower()
+
+                if len(name) > 30:
+                    response = jsonify({
+                        "Message": "Please make the length of the name less than 30 characters",
+                        "Status": "error"
+                    })
+                    response.status_code = 400
+                    return response
 
                 if name and desc:
                     if Categories.validate_input(name=name, desc=desc):
@@ -441,7 +516,6 @@ class UserCategories(Resource):
         if _id:
             category = Categories.query.filter_by(id=_id).filter_by(user_id=user_id).first()
             if category:
-
                 obj = {
                     "id": category.id,
                     "name": category.name.title(),
@@ -461,22 +535,28 @@ class UserCategories(Resource):
                 "message": "Category not found",
                 "status": "error"
             })
-            response.status_code = 401
+            response.status_code = 404
             return response
 
     @api.expect(category_parser)
     def put(self, user_id, _id):
         """Handles adding updating an existing category [ENDPOINT] PUT /category/<id>"""
 
-        category = Categories.query.filter_by(id=_id).filter_by(user_id=user_id).first()
+        category = Categories.query.filter_by(id=_id).first()
 
         if category:
             post_data = category_parser.parse_args()
             if post_data:
                 name = post_data['name'].strip().lower()
                 desc = post_data['desc'].strip().lower()
-                category_check = Categories.query.filter_by(name=name.strip().lower()).\
-                    filter_by(user_id=user_id).first()
+
+                if len(name) > 30:
+                    response = jsonify({
+                        "Message": "Please make the length of the name less than 30 characters",
+                        "Status": "error"
+                    })
+                    response.status_code = 400
+                    return response
 
                 if name and desc:
                     if Categories.validate_input(name=name, desc=desc):
@@ -486,16 +566,18 @@ class UserCategories(Resource):
                             "status": "error"})
                         response.status_code = 400
                         return response
-                    if not category_check:
-                        category.update(name, desc, _id)
-                    else:
-                        response = jsonify({
-                            "message": "Category already exist",
-                            "status": "error"
-                        })
+                    check_category = Categories.query.filter_by(user_id=user_id, name=name.strip().lower()).first()
+                    if check_category:
 
-                        response.status_code = 401
-                        return response
+                        response = jsonify({
+                            "message": "Category already exists",
+                            "status": "error",
+                        })
+                        response.status_code = 400
+                        if check_category.id != _id:
+                            return response
+
+                    category.update(name, desc, _id)
 
                     obj = {
                         "id": category.id,
@@ -524,7 +606,7 @@ class UserCategories(Resource):
             "status": "error"
         })
 
-        response.status_code = 401
+        response.status_code = 404
         return response
 
     @staticmethod
@@ -541,10 +623,10 @@ class UserCategories(Resource):
             response.status_code = 200
             return response
         response = jsonify({
-                            "message": "Category does not exist",
-                            "status": "error"
-                            })
-        response.status_code = 401
+            "message": "Category does not exist",
+            "status": "error"
+        })
+        response.status_code = 404
         return response
 
 
@@ -556,7 +638,7 @@ recipe_get_parser.add_argument('limit', type=int, help='Limit per page, default=
 recipe_parser.add_argument('name', type=str, help='Recipe name', location='form', required=True)
 recipe_parser.add_argument('time', type=str, help='Expected time', location='form', required=True)
 recipe_parser.add_argument('ingredients', type=str, help='Ingredients', location='form', required=True)
-recipe_parser.add_argument('direction', type=str, help='Directions', location='form', required=True)
+recipe_parser.add_argument('procedure', type=str, help='Procedures', location='form', required=True)
 
 
 @recipe_namespace.route('', methods=['GET', 'POST'])
@@ -564,7 +646,7 @@ class UserRecipe(Resource):
     method_decorators = [token_required]
 
     @api.doc(parser=recipe_get_parser)
-    def get(self, user_id, category_id, _id=None):
+    def get(self, user_id, category_id):
         """Gets all Recipes[ENDPOINT] GET /category/<int:category_id>/recipes """
         args = recipe_get_parser.parse_args()
         q = request.values.get('q', '').strip().lower()
@@ -576,7 +658,7 @@ class UserRecipe(Resource):
                 "message": "Category does not exist",
                 "status": "error"
             })
-            response.status_code = 401
+            response.status_code = 404
             return response
 
         if limit:
@@ -594,8 +676,8 @@ class UserRecipe(Resource):
             limit = 5
 
         if page:
-            usrrecipes = Categories.get_all(user_id).count()
-            pages = int(usrrecipes / limit)
+            userrecipes = Categories.get_all(user_id).count()
+            pages = int(userrecipes / limit)
             if page > pages:
                 return {
                            "message": "Page not found"
@@ -614,10 +696,11 @@ class UserRecipe(Resource):
             page = 1
 
         if q:
-            _recipes = Recipes.query. \
+
+            recipes = Recipes.query. \
                 filter(Recipes.name.like('%' + q + '%')).paginate(page, limit)
             user_recipes = []
-            for x in _recipes.items:
+            for x in recipes.items:
                 if x.category_id == category_id:
                     user_recipes.append(x)
             if user_recipes:
@@ -628,7 +711,7 @@ class UserRecipe(Resource):
                         "name": recipe.name.title(),
                         "time": recipe.time,
                         "ingredients": recipe.ingredients,
-                        "direction": recipe.direction,
+                        "procedure": recipe.procedure,
                         "category_id": recipe.category_id,
                         "date_created": recipe.date_created,
                         "date_modified": recipe.date_modified,
@@ -646,26 +729,26 @@ class UserRecipe(Resource):
                     "message": "Recipe '{}' not found".format(q),
                     "status": "error"
                 })
-                response.status_code = 401
+                response.status_code = 404
                 return response
         try:
-            _urecipes = Recipes.query.filter_by(category_id=category_id).paginate(page, limit, error_out=True)
+            category_recipes = Recipes.query.filter_by(category_id=category_id).paginate(page, limit, error_out=True)
         except Exception as e:
             response = jsonify({
-                "message": str(e).split(".")[0]+'.',
+                "message": str(e).split(".")[0] + '.',
                 "status": "error"
             })
             response.status_code = 401
             return response
 
-        if _urecipes:
+        if category_recipes:
 
             if not Categories.query.filter_by(id=category_id).filter_by(user_id=user_id).first():
                 response = jsonify({
                     "message": "Category does not exist",
                     "status": "error"
                 })
-                response.status_code = 401
+                response.status_code = 404
                 return response
             recipe = Recipes.get_all(category_id)
             if not recipe:
@@ -673,26 +756,26 @@ class UserRecipe(Resource):
                     "message": "Recipe not available at the moment",
                     "status": "error"
                 })
-                response.status_code = 401
+                response.status_code = 404
                 return response
-            _recipes2 = []
-            for rec in _urecipes.items:
+            categoryrecipes = []
+            for rec in category_recipes.items:
                 obj = {
                     "id": rec.id,
                     "name": rec.name.title(),
                     "time": rec.time,
                     "ingredients": rec.ingredients,
-                    "direction": rec.direction,
+                    "procedure": rec.procedure,
                     "category_id": rec.category_id,
                     "date_created": rec.date_created,
                     "date_modified": rec.date_modified,
                 }
-                _recipes2.append(obj)
+                categoryrecipes.append(obj)
 
-            response = jsonify({'Next Page': _urecipes.next_num,
-                                'Prev Page': _urecipes.prev_num,
-                                'Has next': _urecipes.has_next,
-                                'Has previous': _urecipes.has_prev}, _recipes2)
+            response = jsonify({'Next Page': category_recipes.next_num,
+                                'Prev Page': category_recipes.prev_num,
+                                'Has next': category_recipes.has_next,
+                                'Has previous': category_recipes.has_prev}, categoryrecipes)
             response.status_code = 200
             return response
 
@@ -701,7 +784,15 @@ class UserRecipe(Resource):
         """Handles adding a new recipe [ENDPOINT] POST /categories/<category_id>/recipe"""
         post_data = recipe_parser.parse_args()
 
-        recipe = Recipes.query.filter_by(name=post_data['name'].strip().lower()).\
+        if not Categories.query.filter_by(id=category_id).filter_by(user_id=user_id).first():
+            response = jsonify({
+                "message": "Category does not exist",
+                "status": "error"
+            })
+            response.status_code = 404
+            return response
+
+        recipe = Recipes.query.filter_by(name=post_data['name'].strip().lower()). \
             filter_by(category_id=category_id).first()
         if not recipe:
 
@@ -709,28 +800,36 @@ class UserRecipe(Resource):
                 name = post_data['name'].strip().lower()
                 time = post_data['time'].strip().lower()
                 ingredients = post_data['ingredients'].strip().lower()
-                direction = post_data['direction'].strip().lower()
+                procedure = post_data['procedure'].strip().lower()
 
-                if name and time and ingredients and direction:
+                if len(name) >= 30 or len(time) >= 30:
+                    response = jsonify({
+                        "Message": "Please make the name or time shorter than 30 characters",
+                        "Status": "error"
+                    })
+                    response.status_code = 400
+                    return response
+
+                if name and time and ingredients and procedure:
                     if Categories.validate_input(name=name, time=time,
-                                                 ingredients=ingredients, direction=direction):
+                                                 ingredients=ingredients, procedure=procedure):
                         response = jsonify({
                             "message": "{} contains invalid characters".format(
                                 Categories.validate_input(name=name, time=time,
-                                                          ingredients=ingredients, direction=direction)),
+                                                          ingredients=ingredients, procedure=procedure)),
                             "status": "error"})
                         response.status_code = 400
                         return response
                     recipe = Recipes(name=name, time=time,
-                                     ingredients=ingredients, direction=direction,
-                                     category_id=category_id)
+                                     ingredients=ingredients, procedure=procedure,
+                                     category_id=category_id, user_id=user_id)
                     recipe.save()
                     obj = {
                         "id": recipe.id,
                         "name": recipe.name.title(),
                         "time": recipe.time,
                         "ingredients": recipe.ingredients,
-                        "direction": recipe.direction,
+                        "procedure": recipe.procedure,
                         "category_id": recipe.category_id,
                         "date_created": recipe.date_created,
                         "date_modified": recipe.date_modified,
@@ -745,7 +844,7 @@ class UserRecipe(Resource):
                     response.status_code = 201
                     return response
             response = jsonify({
-                "message": "Name or time or ingredients or direction cannot be empty",
+                "message": "Name or time or ingredients or procedure cannot be empty",
                 "status": "error"
             })
             response.status_code = 400
@@ -763,7 +862,7 @@ recipe_parser = api.parser()
 recipe_parser.add_argument('name', type=str, help='Recipe name', location='form', required=True)
 recipe_parser.add_argument('time', type=str, help='Expected time', location='form', required=True)
 recipe_parser.add_argument('ingredients', type=str, help='Ingredients', location='form', required=True)
-recipe_parser.add_argument('direction', type=str, help='Directions', location='form', required=True)
+recipe_parser.add_argument('procedure', type=str, help='procedures', location='form', required=True)
 
 
 @recipe_namespace.route('/<int:_id>', methods=['GET', 'PUT', 'DELETE'])
@@ -778,7 +877,7 @@ class UserRecipes(Resource):
                 "message": "Category does not exist",
                 "status": "error"
             })
-            response.status_code = 401
+            response.status_code = 404
             return response
 
         if _id:
@@ -788,7 +887,7 @@ class UserRecipes(Resource):
                     "message": "Recipe not available at the moment",
                     "status": "error"
                 })
-                response.status_code = 401
+                response.status_code = 404
                 return response
 
             obj = {
@@ -796,7 +895,7 @@ class UserRecipes(Resource):
                 "name": recipe.name.title(),
                 "time": recipe.time,
                 "ingredients": recipe.ingredients,
-                "direction": recipe.direction,
+                "procedure": recipe.procedure,
                 "category_id": recipe.category_id,
                 "date_created": recipe.date_created,
                 "date_modified": recipe.date_modified,
@@ -816,10 +915,11 @@ class UserRecipes(Resource):
                 "message": "Category does not exist",
                 "status": "error"
             })
-            response.status_code = 401
+            response.status_code = 404
             return response
 
         recipe = Recipes.get_single(_id, category_id)
+
         if recipe:
             post_data = recipe_parser.parse_args()
 
@@ -827,38 +927,48 @@ class UserRecipes(Resource):
                 name = post_data['name'].strip().lower()
                 time = post_data['time'].strip().lower()
                 ingredients = post_data['ingredients'].strip().lower()
-                direction = post_data['direction'].strip().lower()
+                procedure = post_data['procedure'].strip().lower()
 
-                recipe_check = Recipes.query.filter_by(name=post_data['name'].strip().lower()). \
-                    filter_by(category_id=category_id).first()
+                if len(name) > 30 or len(time) > 30:
+                    response = jsonify({
+                        "Message": "Please make the length of the name or time shorter than 30 characters",
+                        "Status": "error"
+                    })
+                    response.status_code = 400
+                    return response
 
-                if name and time and ingredients and ingredients:
+                if name and time and ingredients and procedure:
                     if Categories.validate_input(name=name, time=time,
-                                                 ingredients=ingredients, direction=direction):
+                                                 ingredients=ingredients, procedure=procedure):
                         response = jsonify({
                             "message": "{} contains invalid characters".format(
                                 Categories.validate_input(name=name, time=time,
-                                                          ingredients=ingredients, direction=direction)),
+                                                          ingredients=ingredients, procedure=procedure)),
                             "status": "error"})
                         response.status_code = 400
                         return response
-                    if not recipe_check:
-                        recipe = Recipes.update(name=name, time=time, ingredients=ingredients,
-                                                direction=direction, _id=_id)
-                    else:
+
+                    recipe_check = Recipes.query.filter_by(user_id=user_id, category_id=category_id,
+                                                           name=name.strip().lower()).first()
+
+                    if recipe_check:
+
                         response = jsonify({
                             "message": "Recipe already exists",
                             "status": "error"
                         })
-                        response.status_code = 401
-                        return response
+                        response.status_code = 400
+
+                        if recipe_check.id != _id:
+                            return response
+                    recipe.update(name, time, ingredients, procedure, _id)
 
                     obj = {
                         "id": recipe.id,
                         "name": recipe.name.title(),
                         "time": recipe.time,
                         "ingredients": recipe.ingredients,
-                        "direction": recipe.direction,
+                        "procedure": recipe.procedure,
                         "category_id": recipe.category_id,
                         "date_created": recipe.date_created,
                         "date_modified": recipe.date_modified,
@@ -870,17 +980,17 @@ class UserRecipes(Resource):
                     })
                     response.status_code = 200
                     return response
-            response = jsonify({
-                "message": "Name or time or ingredients or direction cannot be empty",
-                "status": "error"
-            })
-            response.status_code = 400
-            return response
+                response = jsonify({
+                    "message": "Name or time or ingredients or procedure cannot be empty",
+                    "status": "error"
+                })
+                response.status_code = 400
+                return response
         response = jsonify({
             "message": "Recipe not found",
             "status": "error"
         })
-        response.status_code = 401
+        response.status_code = 404
         return response
 
     @staticmethod
@@ -891,7 +1001,7 @@ class UserRecipes(Resource):
                 "message": "Category does not exist",
                 "status": "error"
             })
-            response.status_code = 401
+            response.status_code = 404
             return response
 
         recipe = Recipes.get_single(_id, category_id)
@@ -907,5 +1017,5 @@ class UserRecipes(Resource):
             "message": "Recipe does not exist",
             "status": "error"
         })
-        response.status_code = 401
+        response.status_code = 404
         return response
