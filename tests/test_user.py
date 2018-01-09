@@ -103,21 +103,6 @@ class TestUserAuth(BaseTestCase):
         self.assertEqual(result.status_code, 200)
 
     # ENDPOINT: POST '/auth/reset-password'
-    def test_for_user_reset_password(self):
-        """Tests for correct reset password"""
-
-        result = self.authenticate()
-
-        jwt_token = json.loads(result.data.decode())['jwt_token']
-
-        result = self.client().post(
-            'api/v1/auth/reset-password',
-            headers=dict(Authorization="Bearer " + jwt_token),
-            data={'email': self.user['email'], 'new password': 'newnew'})
-        result_data = json.loads(result.data.decode())
-        self.assertIn(result_data['message'], 'Email sent to : {} <br/>'.format(self.user['email']))
-        self.assertEqual(result.status_code, 200)
-
     def test_reset_with_non_existing_email(self):
         """Tests reset password with non existing email"""
 
@@ -156,24 +141,6 @@ class TestUserAuth(BaseTestCase):
             headers=dict(Authorization="Bearer " + jwt_token),
             data={'email': self.user['email'], 'new password': 'new'})
         self.assertIn(b"Password must be 6 or more characters.", result.data)
-        self.assertEqual(result.status_code, 400)
-
-    # new password
-    def _test_correct_new_password(self):
-        result = self.client().post(
-            'api/v1/auth/new-password/iqehiquehy3843264728qyer7348584356',
-            data={'new password': 'newnew'})
-        result_data = json.loads(result.data.decode())
-        self.assertIn(result_data['message'], "Password for {} has been reset. You can now login".format(
-            self.user['email'], 'new password'),)
-        self.assertEqual(result.status_code, 400)
-
-    def _test_new_password_less_than_6_characters(self):
-        result = self.client().post(
-            'api/v1/auth/new-password/<token>',
-            data={'new password': 'new'})
-        self.assertIn("Password must be more than 6 characters.".format(
-            self.user['email'], 'new password'), result.data)
         self.assertEqual(result.status_code, 400)
 
     # tokens
