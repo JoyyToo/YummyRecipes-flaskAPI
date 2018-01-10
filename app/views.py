@@ -279,6 +279,7 @@ class NewPasswordView(Resource):
 
     @api.expect(new_parser)
     def post(self, token):
+        """Handles POST request for /auth/new-password/<token>"""
         data = new_parser.parse_args()
         password = data['new password']
 
