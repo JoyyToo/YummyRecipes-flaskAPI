@@ -409,7 +409,7 @@ class UserCategory(Resource):
                 "message": str(e),
                 "status": "error"
             })
-            response.status_code = 401
+            response.status_code = 400
             return response
 
         if recipe_category:
