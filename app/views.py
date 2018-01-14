@@ -5,7 +5,7 @@ from itsdangerous import URLSafeTimedSerializer
 from flask_bcrypt import Bcrypt
 from flask_mail import Mail, Message
 from app import api, Resource, app
-from app.models import Users, Categories, Recipes, Sessions
+from app.models import Users, Categories, Recipes, Blacklist
 
 mail = Mail(app)
 
@@ -42,15 +42,27 @@ def token_required(f):
                        "status": "error"
                    }, 403
 
+        token_auth = Users.decode_token(access_token)
+
+        if token_auth in ["expired", "invalid"]:
+            if token_auth == "expired":
+                return {"message": "Expired token. Please login to get a new token"}, 403
+            else:
+                return {"message": "Invalid token. Please register or login"}, 403
+
         if access_token:
             user_id = Users.decode_token(access_token)
             if user_id:
                 if isinstance(user_id, int):
-                    if not Sessions.login_status(user_id):
-                        return {
-                                   "message": "Session not available, Please login",
-                                   "status": "error"
-                               }, 403
+                    blacklisted = Blacklist.query.filter_by(revoked_token=str(access_token)).first()
+
+                    if blacklisted:
+                        response = jsonify({
+                            "message": "Session not available, Please login",
+                            "status": "error"
+                        })
+                        response.status_code = 401
+                        return response
                 if isinstance(user_id, str):
                     return user_id
 
@@ -112,8 +124,6 @@ class UserRegistration(Resource):
                         user = Users(email=email, username=username,
                                      password=password)
                         user.save()
-                        session = Sessions(user.id)
-                        session.save()
 
                         response = jsonify({
                             "message": "You registered successfully. Please log in.",
@@ -173,8 +183,7 @@ class UserLogin(Resource):
             if user and user.password_is_valid(data['password']):
                 # generate access token
                 access_token = user.generate_token(user.id)
-                session = Sessions.login(user.id)
-                if access_token and session:
+                if access_token:
                     response = jsonify({
                         "message": "You logged in successfully.",
                         "jwt_token": access_token.decode(),
@@ -206,7 +215,11 @@ class UserLogout(Resource):
     @staticmethod
     def post(user_id):
         """Handles POST request for /auth/logout"""
-        Sessions.logout(user_id)
+        auth_header = request.headers.get('Authorization', '')
+        access_token = auth_header.split(" ")[1]
+
+        revoked_token = Blacklist(revoked_token=access_token)
+        revoked_token.save()
 
         response = jsonify({
             "message": "You logged out successfully.",
