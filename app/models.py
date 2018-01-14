@@ -72,16 +72,10 @@ class Users(db.Model):
             return payload['sub']
         except jwt.ExpiredSignatureError:
             # token is valid but expired
-            return {
-                       "message": "Expired token. Please login to get a new token",
-                       "status": "error"
-                   }, 403
+            return "expired"
+
         except jwt.InvalidTokenError:
-            # token is invalid
-            return {
-                       "message": "Invalid token. Please register or login",
-                       "status": "error"
-                   }, 403
+            return 'invalid'
 
 
 class Categories(db.Model):
@@ -101,7 +95,7 @@ class Categories(db.Model):
 
     def __init__(self, name, desc, user_id):
         """Initialize Categories with name, desc and user_id"""
-        self.name = name
+        self.name = self.name or name
         self.desc = desc
         self.user_id = user_id
 
@@ -207,44 +201,17 @@ class Recipes(db.Model):
         return "<Recipe: {}>".format(self.id)
 
 
-class Sessions(db.Model):
-    """This class defines the session table"""
+class Blacklist(db.Model):
+    """ Model for blacklisted tokens"""
+    __tablename__ = "blacklist"
 
-    __tablename__ = "user_sessions"
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, unique=True)
-    is_logged_in = db.Column(db.Boolean, default=False)
-
-    def __init__(self, user_id):
-        self.user_id = user_id
+    token_id = db.Column(db.Integer, unique=True,
+                         primary_key=True, autoincrement=True)
+    revoked_token = db.Column(db.String(500), nullable=False)
 
     def save(self):
         db.session.add(self)
         db.session.commit()
 
-    @staticmethod
-    def login(user_id):
-        session = Sessions.query.filter_by(user_id=user_id).first()
-        if session:
-            session.is_logged_in = True
-            session.save()
-            return True
-        return False
-
-    @staticmethod
-    def logout(user_id):
-        session = Sessions.query.filter_by(user_id=user_id).first()
-        if session:
-            session.is_logged_in = False
-            session.save()
-            return True
-        return False
-
-    @staticmethod
-    def login_status(user_id):
-        session = Sessions.query.filter_by(user_id=user_id).first()
-        if session:
-            status = session.is_logged_in
-            return status
-
-        return False
+    def __repr__(self):
+        return "<Revoked token: {}".format(self.revoked_tokens)
