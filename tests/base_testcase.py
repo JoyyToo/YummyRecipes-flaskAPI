@@ -1,5 +1,7 @@
 import unittest
 import json
+import jwt
+from datetime import datetime, timedelta
 
 from app import app, db
 
@@ -34,12 +36,34 @@ class BaseTestCase(unittest.TestCase):
         db.drop_all()
         db.session.commit()
 
+    @staticmethod
+    def generate_token(email):
+        """Generates access token for a user"""
+        # set up a payload with an expiration time
+        # iat - issued at
+        # exp - expiration time
+        # sub - identifies the subject of the token
+        payload = {
+            'exp': datetime.utcnow() + timedelta(seconds=3),
+            'iat': datetime.utcnow(),
+            'sub': email
+        }
+
+        # create the byte string token using the payload and the SECRET
+        jwt_token = jwt.encode(
+            payload,
+            app.config.get('SECRET_KEY'),
+            algorithm='HS256'
+        )
+
+        return jwt_token
+
     def authenticate(self):
         self.client().post('api/v1/auth/register', data=self.user)
         result = self.client().post('api/v1/auth/login', data=self.user)
         return result
 
-    def authenticate_and_create_category(self):
+    def create_category(self):
         result = self.authenticate()
 
         jwt_token = json.loads(result.data.decode())['jwt_token']
@@ -49,18 +73,9 @@ class BaseTestCase(unittest.TestCase):
             'api/v1/category',
             headers=dict(Authorization="Bearer " + jwt_token),
             data=self.category)
-        self.assertEqual(result.status_code, 201)
-        return jwt_token
+        return result
 
-    def authenticate_create_and_get_category(self):
-        result = self.authenticate()
-
-        jwt_token = self.authenticate_and_create_category()
-
-        results = json.loads(result.data.decode())
-        return jwt_token
-
-    def authenticate_and_create_recipe(self):
+    def create_recipe(self):
         result = self.authenticate()
 
         jwt_token = json.loads(result.data.decode())['jwt_token']
@@ -73,17 +88,7 @@ class BaseTestCase(unittest.TestCase):
         result = self.client().post('api/v1/category/1/recipes',
                                     headers=dict(Authorization="Bearer " + jwt_token),
                                     data=self.recipe)
-
-        self.assertEqual(result.status_code, 201)
-        self.assertIn('Recipe added successfully', str(result.data))
-        return jwt_token
-
-    def authenticate_create_and_get_recipe(self):
-        result = self.authenticate()
-
-        jwt_token = self.authenticate_and_create_recipe()
-        results = json.loads(result.data.decode())
-        return jwt_token
+        return result
 
 
 if __name__ == "__main__":

@@ -1,6 +1,10 @@
 import unittest
 import json
+import jwt
+import time
+from datetime import datetime, timedelta
 
+from app import app
 from tests.base_testcase import BaseTestCase
 
 
@@ -163,6 +167,40 @@ class TestUserAuth(BaseTestCase):
             headers=dict(Authorization="hiuuivuv"),
             data=self.category)
         self.assertIn(b"Please Use Bearer before adding token [Bearer <token>]", result.data)
+        self.assertEqual(result.status_code, 403)
+
+    def test_for_invalid_token(self):
+        """Test for invalid token"""
+        self.authenticate()
+
+        result = self.client().post(
+            'api/v1/category',
+            headers=dict(Authorization="Bearer hiuuivuv"),
+            data=self.category)
+        self.assertIn(b"Invalid token. Please register or login", result.data)
+        self.assertEqual(result.status_code, 403)
+
+    def test_for_expired_token(self):
+        """Test for expired token"""
+        self.authenticate()
+        payload = {
+            'exp': datetime.utcnow() + timedelta(seconds=1),
+            'iat': datetime.utcnow(),
+            'sub': 1,
+        }
+
+        jwt_token = jwt.encode(
+            payload,
+            app.config.get('SECRET_KEY'),
+            algorithm='HS256'
+        )
+        time.sleep(2)
+
+        result = self.client().post(
+            'api/v1/category',
+            headers=dict(Authorization=b"Bearer " + jwt_token),
+            data=self.category)
+        self.assertIn(b"Expired token. Please login to get a new token", result.data)
         self.assertEqual(result.status_code, 403)
 
 

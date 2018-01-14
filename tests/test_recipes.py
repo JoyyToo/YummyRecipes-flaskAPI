@@ -8,12 +8,16 @@ class RecipesTestCase(BaseTestCase):
     def test_recipe_creation(self):
         """Test recipe can be created"""
 
-        self.authenticate_and_create_recipe()
+        self.authenticate()
+        self.create_category()
+        result = self.create_recipe()
+
+        self.assertEqual(result.status_code, 201)
+        self.assertIn('Recipe added successfully', str(result.data))
 
     def test_recipe_creation_for_non_existing_category(self):
         """Test recipe creation with non existing category  """
         result = self.authenticate()
-
         jwt_token = json.loads(result.data.decode())['jwt_token']
 
         result = self.client().post('api/v1/category/1/recipes', headers=dict(Authorization="Bearer " + jwt_token),
@@ -22,7 +26,9 @@ class RecipesTestCase(BaseTestCase):
 
     def test_recipe_creation_with_empty_fields(self):
         """Test recipe creation with empty fields"""
-        jwt_token = self.authenticate_and_create_category()
+        result = self.authenticate()
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+        self.create_category()
 
         result = self.client().post('api/v1/category/1/recipes', headers=dict(Authorization="Bearer " + jwt_token),
                                     data={'name': '', 'time': '', 'ingredients': '', 'procedure': ''})
@@ -31,7 +37,9 @@ class RecipesTestCase(BaseTestCase):
 
     def test_recipe_creation_with_long_characters(self):
         """Test recipe creation with long characters"""
-        jwt_token = self.authenticate_and_create_category()
+        result = self.authenticate()
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+        self.create_category()
 
         result = self.client().post('api/v1/category/1/recipes', headers=dict(Authorization="Bearer " + jwt_token),
                                     data={'name': 'Name or time or ingredients or procedure cannot be empty',
@@ -41,7 +49,10 @@ class RecipesTestCase(BaseTestCase):
 
     def test_create_existing_recipe(self):
         """Test create existing recipe"""
-        jwt_token = self.authenticate_and_create_recipe()
+        result = self.authenticate()
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+        self.create_category()
+        self.create_recipe()
 
         result = self.client().post('api/v1/category/1/recipes', headers=dict(Authorization="Bearer " + jwt_token),
                                     data=self.recipe)
@@ -52,7 +63,9 @@ class RecipesTestCase(BaseTestCase):
     def test_recipe_creation_with_invalid_characters(self):
         """Test recipe can be created with invalid characters"""
 
-        jwt_token = self.authenticate_and_create_category()
+        result = self.authenticate()
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+        self.create_category()
 
         result = self.client().post('api/v1/category/1/recipes', headers=dict(Authorization="Bearer " + jwt_token),
                                     data={'name': '$$$', 'time': 'whedio', 'ingredients': 'wkehri',
@@ -63,7 +76,10 @@ class RecipesTestCase(BaseTestCase):
 
     def test_if_user_can_retrieve_all_recipes(self):
         """Test api can get all recipes"""
-        jwt_token = self.authenticate_and_create_recipe()
+        result = self.authenticate()
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+        self.create_category()
+        self.create_recipe()
 
         result = self.client().get(
             'api/v1/category/1/recipes',
@@ -73,7 +89,10 @@ class RecipesTestCase(BaseTestCase):
 
     def test_if_user_can_retrieve_all_recipes_when_category_is_non_existing(self):
         """Test api can get all recipes with non existing category"""
-        jwt_token = self.authenticate_and_create_recipe()
+        result = self.authenticate()
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+        self.create_category()
+        self.create_recipe()
 
         result = self.client().get(
             'api/v1/category/2/recipes',
@@ -83,7 +102,10 @@ class RecipesTestCase(BaseTestCase):
 
     def test_if_user_can_retrieve_recipes_by_id(self):
         """Test api can get recipes by id"""
-        jwt_token = self.authenticate_and_create_recipe()
+        result = self.authenticate()
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+        self.create_category()
+        self.create_recipe()
 
         result = self.client().get(
             'api/v1/category/1/recipes/1',
@@ -120,7 +142,9 @@ class RecipesTestCase(BaseTestCase):
 
     def test_get_with_category_and_missing_recipe_by_id(self):
         """Test get with category and non existing recipe by id"""
-        jwt_token = self.authenticate_and_create_category()
+        result = self.authenticate()
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+        self.create_category()
 
         result = self.client().get(
             'api/v1/category/1/recipes/1',
@@ -131,7 +155,11 @@ class RecipesTestCase(BaseTestCase):
 
     def test_get_all_non_existing_recipes_with_category(self):
         """Test get all non existing recipes with category"""
-        jwt_token = self.authenticate_and_create_category()
+        result = self.authenticate()
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+        self.create_category()
+
+        json.loads(result.data.decode())
 
         result = self.client().get(
             'api/v1/category/1/recipes',
@@ -157,7 +185,12 @@ class RecipesTestCase(BaseTestCase):
     def test_recipe_editing(self):
         """Test recipe can be edited"""
 
-        jwt_token = self.authenticate_create_and_get_recipe()
+        result = self.authenticate()
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+        self.create_category()
+        self.create_recipe()
+
+        json.loads(result.data.decode())
 
         # edit recipe
         result = self.client().put(
@@ -169,7 +202,12 @@ class RecipesTestCase(BaseTestCase):
     def test_recipe_editing_to_an_existing_name(self):
         """Test recipe editing to an existing name"""
 
-        jwt_token = self.authenticate_create_and_get_recipe()
+        result = self.authenticate()
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+        self.create_category()
+        self.create_recipe()
+
+        json.loads(result.data.decode())
 
         # create a category by making a POST request
         self.client().post(
@@ -192,7 +230,12 @@ class RecipesTestCase(BaseTestCase):
 
     def test_edit_with_invalid_characters(self):
         """edit recipe with invalid characters"""
-        jwt_token = self.authenticate_create_and_get_recipe()
+        result = self.authenticate()
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+        self.create_category()
+        self.create_recipe()
+
+        json.loads(result.data.decode())
 
         result = self.client().put(
             'api/v1/category/1/recipes/1',
@@ -203,7 +246,12 @@ class RecipesTestCase(BaseTestCase):
 
     def test_recipe_editing_with_long_characters(self):
         """Test recipe editing with long characters"""
-        jwt_token = self.authenticate_create_and_get_recipe()
+        result = self.authenticate()
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+        self.create_category()
+        self.create_recipe()
+
+        json.loads(result.data.decode())
 
         result = self.client().put('api/v1/category/1/recipes/1', headers=dict(Authorization="Bearer " + jwt_token),
                                    data={'name': 'Name or time or ingredients or procedure cannot be empty',
@@ -213,7 +261,12 @@ class RecipesTestCase(BaseTestCase):
 
     def test_edit_with_empty_fields(self):
         """check edit with  fields are empty"""
-        jwt_token = self.authenticate_create_and_get_recipe()
+        result = self.authenticate()
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+        self.create_category()
+        self.create_recipe()
+
+        json.loads(result.data.decode())
 
         result = self.client().put('api/v1/category/1/recipes/1', headers=dict(Authorization="Bearer " + jwt_token),
                                    data={'name': '', 'time': '', 'ingredients': '', 'procedure': ''})
@@ -237,7 +290,9 @@ class RecipesTestCase(BaseTestCase):
 
     def test_edit_recipe_with_category_but_no_recipe(self):
         """edit the recipe with category but no recipe"""
-        jwt_token = self.authenticate_and_create_category()
+        result = self.authenticate()
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+        self.create_category()
 
         result = self.client().put(
             'api/v1/category/1/recipes/1',
@@ -248,7 +303,12 @@ class RecipesTestCase(BaseTestCase):
     def test_recipe_deletion(self):
         """Test recipe can be deleted"""
 
-        jwt_token = self.authenticate_create_and_get_recipe()
+        result = self.authenticate()
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+        self.create_category()
+        self.create_recipe()
+
+        json.loads(result.data.decode())
 
         # delete the category
         result = self.client().delete(
@@ -271,7 +331,9 @@ class RecipesTestCase(BaseTestCase):
 
     def test_delete_with_category_but_no_recipe(self):
         """Test delete the recipe with category but no recipe"""
-        jwt_token = self.authenticate_and_create_category()
+        result = self.authenticate()
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+        self.create_category()
 
         result = self.client().delete(
             'api/v1/category/1/recipes/1',
@@ -281,7 +343,10 @@ class RecipesTestCase(BaseTestCase):
 
     def test_search_existing_recipe(self):
         """Test api can search existing recipe"""
-        jwt_token = self.authenticate_and_create_recipe()
+        result = self.authenticate()
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+        self.create_category()
+        self.create_recipe()
 
         result = self.client().get(
             'api/v1/category/1/recipes?q=mea',
@@ -291,7 +356,10 @@ class RecipesTestCase(BaseTestCase):
 
     def test_search_non_existing_recipe(self):
         """Test api can searching non existing recipe"""
-        jwt_token = self.authenticate_and_create_recipe()
+        result = self.authenticate()
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+        self.create_category()
+        self.create_recipe()
 
         result = self.client().get(
             'api/v1/category/1/recipes?q=des',
@@ -301,7 +369,10 @@ class RecipesTestCase(BaseTestCase):
 
     def test_correct_page_number(self):
         """Test api can take correct page number"""
-        jwt_token = self.authenticate_and_create_recipe()
+        result = self.authenticate()
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+        self.create_category()
+        self.create_recipe()
 
         result = self.client().get(
             'api/v1/category/1/recipes?limit=1&page=1',
@@ -311,7 +382,10 @@ class RecipesTestCase(BaseTestCase):
 
     def test_negative_page_number(self):
         """Test if api can take negative page number"""
-        jwt_token = self.authenticate_and_create_recipe()
+        result = self.authenticate()
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+        self.create_category()
+        self.create_recipe()
 
         result = self.client().get(
             'api/v1/category/1/recipes?limit=1&page=-1',
@@ -322,7 +396,10 @@ class RecipesTestCase(BaseTestCase):
 
     def test_non_existent__page_number(self):
         """Test if api can take non existent page number"""
-        jwt_token = self.authenticate_and_create_recipe()
+        result = self.authenticate()
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+        self.create_category()
+        self.create_recipe()
 
         result = self.client().get(
             'api/v1/category/1/recipes?limit=1&page=7',
@@ -332,7 +409,10 @@ class RecipesTestCase(BaseTestCase):
 
     def test_correct_limit(self):
         """Test api can take correct limit"""
-        jwt_token = self.authenticate_and_create_recipe()
+        result = self.authenticate()
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+        self.create_category()
+        self.create_recipe()
 
         result = self.client().get(
             'api/v1/category/1/recipes?limit=1&page=1',
@@ -342,7 +422,10 @@ class RecipesTestCase(BaseTestCase):
 
     def test_negative_limit(self):
         """Test api can take a negative limit"""
-        jwt_token = self.authenticate_and_create_recipe()
+        result = self.authenticate()
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+        self.create_category()
+        self.create_recipe()
 
         result = self.client().get(
             'api/v1/category/1/recipes?limit=-1&page=1',

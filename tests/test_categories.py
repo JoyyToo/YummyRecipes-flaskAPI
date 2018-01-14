@@ -7,21 +7,24 @@ class CategoriesTestCase(BaseTestCase):
 
     def test_category_creation(self):
         """Test API can create a category (POST request)"""
-
-        self.authenticate_and_create_category()
+        self.authenticate()
+        result = self.create_category()
+        self.assertEqual(result.status_code, 201)
 
     def test_create_existing_category(self):
         """Tests creation of an already existing category"""
-        jwt_token = self.authenticate_and_create_category()
+        self.authenticate()
+        self.create_category()
 
-        result = self.client().post('api/v1/category', headers=dict(Authorization="Bearer " + jwt_token),
-                                    data=self.category)
+        result = self.create_category()
         self.assertIn("Category already exists", str(result.data))
         self.assertEqual(result.status_code, 400)
 
     def test_create_category_with_empty_fields(self):
         """Test category creation with empty fields"""
-        jwt_token = self.authenticate_and_create_category()
+        result = self.authenticate()
+
+        jwt_token = json.loads(result.data.decode())['jwt_token']
 
         result = self.client().post('api/v1/category', headers=dict(Authorization="Bearer " + jwt_token),
                                     data={'name': '', 'desc': ''})
@@ -30,7 +33,9 @@ class CategoriesTestCase(BaseTestCase):
 
     def test_create_category_with_a_lot_of_characters(self):
         """Test category creation with a lot of characters"""
-        jwt_token = self.authenticate_and_create_category()
+        result = self.authenticate()
+
+        jwt_token = json.loads(result.data.decode())['jwt_token']
 
         result = self.client().post('api/v1/category', headers=dict(Authorization="Bearer " + jwt_token),
                                     data={'name': 'Name or description cannot be emptyName or description cannot be '
@@ -40,7 +45,10 @@ class CategoriesTestCase(BaseTestCase):
 
     def test_if_user_can_retrieve_all_categories(self):
         """Test api can get all categories"""
-        jwt_token = self.authenticate_and_create_category()
+        result = self.authenticate()
+        self.create_category()
+
+        jwt_token = json.loads(result.data.decode())['jwt_token']
 
         result = self.client().get(
             'api/v1/category',
@@ -64,7 +72,10 @@ class CategoriesTestCase(BaseTestCase):
 
     def test_if_user_can_retrieve_categories_by_id(self):
         """Test api can get categories by id"""
-        jwt_token = self.authenticate_and_create_category()
+        result = self.authenticate()
+        self.create_category()
+
+        jwt_token = json.loads(result.data.decode())['jwt_token']
 
         result = self.client().get(
             'api/v1/category/1',
@@ -100,7 +111,10 @@ class CategoriesTestCase(BaseTestCase):
 
     def test_category_editing(self):
         """Test category can be updated"""
-        jwt_token = self.authenticate_create_and_get_category()
+        result = self.authenticate()
+        self.create_category()
+
+        jwt_token = json.loads(result.data.decode())['jwt_token']
 
         # edit category
         result = self.client().put(
@@ -111,7 +125,10 @@ class CategoriesTestCase(BaseTestCase):
 
     def test_category_editing_to_existing_name(self):
         """Test category can be updated"""
-        jwt_token = self.authenticate_create_and_get_category()
+        result = self.authenticate()
+        self.create_category()
+
+        jwt_token = json.loads(result.data.decode())['jwt_token']
 
         # create a category by making a POST request
         result = self.client().post(
@@ -129,7 +146,10 @@ class CategoriesTestCase(BaseTestCase):
 
     def test_edit_with_invalid_characters(self):
         """Test edit with invalid characters"""
-        jwt_token = self.authenticate_create_and_get_category()
+        result = self.authenticate()
+        self.create_category()
+
+        jwt_token = json.loads(result.data.decode())['jwt_token']
 
         result = self.client().put(
             'api/v1/category/1',
@@ -140,7 +160,11 @@ class CategoriesTestCase(BaseTestCase):
 
     def test_edit_with_empty_fields(self):
         """Test edit with empty fields"""
-        jwt_token = self.authenticate_create_and_get_category()
+        result = self.authenticate()
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+        self.create_category()
+
+        json.loads(result.data.decode())
 
         result = self.client().put(
             'api/v1/category/1',
@@ -150,7 +174,11 @@ class CategoriesTestCase(BaseTestCase):
 
     def test_edit_with_long_name(self):
         """Test edit with long name"""
-        jwt_token = self.authenticate_create_and_get_category()
+        result = self.authenticate()
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+        self.create_category()
+
+        json.loads(result.data.decode())
 
         result = self.client().put(
             'api/v1/category/1',
@@ -175,7 +203,11 @@ class CategoriesTestCase(BaseTestCase):
 
     def test_category_deletion(self):
         """Test category can be deleted"""
-        jwt_token = self.authenticate_create_and_get_category()
+        result = self.authenticate()
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+        self.create_category()
+
+        json.loads(result.data.decode())
 
         # delete the category
         result = self.client().delete(
@@ -197,7 +229,10 @@ class CategoriesTestCase(BaseTestCase):
 
     def test_search_existing_category(self):
         """Test api can search existing category"""
-        jwt_token = self.authenticate_and_create_category()
+        result = self.authenticate()
+        self.create_category()
+
+        jwt_token = json.loads(result.data.decode())['jwt_token']
 
         result = self.client().get(
             'api/v1/category?q=name',
@@ -207,7 +242,12 @@ class CategoriesTestCase(BaseTestCase):
 
     def test_search_non_existing_category(self):
         """Test searching non existing category"""
-        jwt_token = self.authenticate_create_and_get_category()
+        result = self.authenticate()
+        self.create_category()
+
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+
+        json.loads(result.data.decode())
 
         result = self.client().get(
             'api/v1/category?q=des',
@@ -217,7 +257,12 @@ class CategoriesTestCase(BaseTestCase):
 
     def test_correct_page_number(self):
         """Test if api can take correct page number"""
-        jwt_token = self.authenticate_create_and_get_category()
+        result = self.authenticate()
+        self.create_category()
+
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+
+        json.loads(result.data.decode())
 
         result = self.client().get(
             'api/v1/category?limit=1&page=1',
@@ -227,7 +272,12 @@ class CategoriesTestCase(BaseTestCase):
 
     def test_negative_page_number(self):
         """Test if api can take a negative page number"""
-        jwt_token = self.authenticate_create_and_get_category()
+        result = self.authenticate()
+        self.create_category()
+
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+
+        json.loads(result.data.decode())
 
         result = self.client().get(
             'api/v1/category?limit=1&page=-7',
@@ -238,7 +288,12 @@ class CategoriesTestCase(BaseTestCase):
 
     def test_non_existing_page_number(self):
         """Test if api can take a non existing  page number"""
-        jwt_token = self.authenticate_create_and_get_category()
+        result = self.authenticate()
+        self.create_category()
+
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+
+        json.loads(result.data.decode())
 
         result = self.client().get(
             'api/v1/category?limit=1&page=7',
@@ -248,7 +303,12 @@ class CategoriesTestCase(BaseTestCase):
 
     def test_correct_limit(self):
         """Test if api can take correct limit"""
-        jwt_token = self.authenticate_create_and_get_category()
+        result = self.authenticate()
+        self.create_category()
+
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+
+        json.loads(result.data.decode())
 
         result = self.client().get(
             'api/v1/category?limit=1&page=1',
@@ -258,7 +318,12 @@ class CategoriesTestCase(BaseTestCase):
 
     def test_negative_limit(self):
         """Test if api can take negative limit"""
-        jwt_token = self.authenticate_create_and_get_category()
+        result = self.authenticate()
+        self.create_category()
+
+        jwt_token = json.loads(result.data.decode())['jwt_token']
+
+        json.loads(result.data.decode())
 
         result = self.client().get(
             'api/v1/category?limit=-1&page=1',
