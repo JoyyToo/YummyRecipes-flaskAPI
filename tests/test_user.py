@@ -17,7 +17,7 @@ class TestUserAuth(BaseTestCase):
         result = self.client().post('/api/v1/auth/register', data=self.user)
 
         self.assertEqual(result.status_code, 201)
-        self.assertIn(b"You registered successfully. Please log in.", result.data)
+        self.assertIn("You registered successfully. Please log in.", str(result.data))
 
     def test_registration_for_existing_user(self):
         """Tests for registration of existing user."""
@@ -25,7 +25,7 @@ class TestUserAuth(BaseTestCase):
         result = self.client().post('/api/v1/auth/register', data=self.user)
 
         self.assertEqual(result.status_code, 409)
-        self.assertIn(b"User already exists. Please login", result.data)
+        self.assertIn("User already exists. Please login", str(result.data))
 
     def test_registration_for_empty_fields(self):
         """Tests for registration with empty fields"""
@@ -34,7 +34,7 @@ class TestUserAuth(BaseTestCase):
         result = self.client().post('api/v1/auth/register', data=self.user)
 
         self.assertEqual(result.status_code, 400)
-        self.assertIn(b"Please fill all fields", result.data)
+        self.assertIn("Please fill all fields", str(result.data))
 
     def test_registration_with_invalid_characters(self):
         """Tests for registration with invalid characters"""
@@ -43,7 +43,7 @@ class TestUserAuth(BaseTestCase):
         result = self.client().post('api/v1/auth/register', data=self.user)
 
         self.assertEqual(result.status_code, 400)
-        self.assertIn(b"Username contains invalid characters", result.data)
+        self.assertIn("Username contains invalid characters", str(result.data))
 
     def test_registration_with_a_lot_of_characters(self):
         """Tests for registration with alot of characters"""
@@ -54,7 +54,7 @@ class TestUserAuth(BaseTestCase):
         result = self.client().post('api/v1/auth/register', data=self.user)
 
         self.assertEqual(result.status_code, 400)
-        self.assertIn(b"Please make the length of the email or username less than 40 characters", result.data)
+        self.assertIn("Please make the length of the email or username less than 40 characters", str(result.data))
 
     def test_invalid_email_address(self):
         """Tests for registration with invalid email"""
@@ -63,7 +63,7 @@ class TestUserAuth(BaseTestCase):
         result = self.client().post('api/v1/auth/register', data=self.user)
 
         self.assertEqual(result.status_code, 400)
-        self.assertIn(b"Please enter a valid email address", result.data)
+        self.assertIn("Please enter a valid email address", str(result.data))
 
     def test_registration_for_password_less_than_6(self):
         """Tests for registration with password less than 6 characters"""
@@ -72,7 +72,7 @@ class TestUserAuth(BaseTestCase):
         result = self.client().post('api/v1/auth/register', data=self.user)
 
         self.assertEqual(result.status_code, 400)
-        self.assertIn(b"Password must be more than 6 characters.", result.data)
+        self.assertIn("Password must be more than 6 characters.", str(result.data))
 
     # ENDPOINT: POST '/auth/login'
     def test_for_user_login(self):
@@ -80,7 +80,7 @@ class TestUserAuth(BaseTestCase):
 
         result = self.authenticate()
 
-        self.assertIn(b"You logged in successfully.", result.data)
+        self.assertIn("You logged in successfully.", str(result.data))
 
     def test_invalid_login(self):
         """Tests for invalid user login."""
@@ -89,7 +89,7 @@ class TestUserAuth(BaseTestCase):
         self.assertEqual(result.status_code, 201)
 
         result = self.client().post('api/v1/auth/login', data=self.wrong_user)
-        self.assertIn(b"Invalid email or password, Please try again", result.data)
+        self.assertIn("Invalid email or password, Please try again", str(result.data))
 
     # ENDPOINT: POST '/auth/reset-logout'
     def test_for_user_logout(self):
@@ -103,7 +103,7 @@ class TestUserAuth(BaseTestCase):
             'api/v1/auth/logout',
             headers=dict(Authorization="Bearer " + jwt_token),
             data=self.user)
-        self.assertIn(b"You logged out successfully.", result.data)
+        self.assertIn("You logged out successfully.", str(result.data))
         self.assertEqual(result.status_code, 200)
 
     # ENDPOINT: POST '/auth/reset-password'
@@ -118,7 +118,7 @@ class TestUserAuth(BaseTestCase):
             'api/v1/auth/reset-password',
             headers=dict(Authorization="Bearer " + jwt_token),
             data={'email': 'test@mail.com', 'new password': 'newnew'})
-        self.assertIn(b"User email does not exist.", result.data)
+        self.assertIn("User email does not exist.", str(result.data))
         self.assertEqual(result.status_code, 404)
 
     def test_reset_with_invalid_email(self):
@@ -132,7 +132,7 @@ class TestUserAuth(BaseTestCase):
             'api/v1/auth/reset-password',
             headers=dict(Authorization="Bearer " + jwt_token),
             data={'email': 'test@mail.com.com', 'new password': 'newnew'})
-        self.assertIn(b"Email Invalid. Do not include special characters.", result.data)
+        self.assertIn("Email Invalid. Do not include special characters.", str(result.data))
         self.assertEqual(result.status_code, 400)
 
     def _test_reset_with_password_less_than_6_characters(self):
@@ -144,7 +144,7 @@ class TestUserAuth(BaseTestCase):
             'api/v1/auth/reset-password',
             headers=dict(Authorization="Bearer " + jwt_token),
             data={'email': self.user['email'], 'new password': 'new'})
-        self.assertIn(b"Password must be 6 or more characters.", result.data)
+        self.assertIn("Password must be 6 or more characters.", str(result.data))
         self.assertEqual(result.status_code, 400)
 
     # tokens
@@ -155,7 +155,7 @@ class TestUserAuth(BaseTestCase):
         result = self.client().post(
             'api/v1/category',
             data=self.category)
-        self.assertIn(b"Unauthorized, Please login or register", result.data)
+        self.assertIn("Unauthorized, Please login or register", str(result.data))
         self.assertEqual(result.status_code, 403)
 
     def test_for_missing_bearer(self):
@@ -166,7 +166,7 @@ class TestUserAuth(BaseTestCase):
             'api/v1/category',
             headers=dict(Authorization="hiuuivuv"),
             data=self.category)
-        self.assertIn(b"Please Use Bearer before adding token [Bearer <token>]", result.data)
+        self.assertIn("Please Use Bearer before adding token [Bearer <token>]", str(result.data))
         self.assertEqual(result.status_code, 403)
 
     def test_for_invalid_token(self):
@@ -177,12 +177,12 @@ class TestUserAuth(BaseTestCase):
             'api/v1/category',
             headers=dict(Authorization="Bearer hiuuivuv"),
             data=self.category)
-        self.assertIn(b"Invalid token. Please register or login", result.data)
+        self.assertIn("Invalid token. Please register or login", str(result.data))
+
         self.assertEqual(result.status_code, 403)
 
     def test_for_expired_token(self):
         """Test for expired token"""
-        self.authenticate()
         payload = {
             'exp': datetime.utcnow() + timedelta(seconds=1),
             'iat': datetime.utcnow(),
@@ -200,7 +200,7 @@ class TestUserAuth(BaseTestCase):
             'api/v1/category',
             headers=dict(Authorization=b"Bearer " + jwt_token),
             data=self.category)
-        self.assertIn(b"Expired token. Please login to get a new token", result.data)
+        self.assertIn("Expired token. Please login to get a new token", str(result.data))
         self.assertEqual(result.status_code, 403)
 
 
