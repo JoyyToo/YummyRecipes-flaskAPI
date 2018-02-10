@@ -214,13 +214,9 @@ class RecipesTestCase(BaseTestCase):
             'api/v1/category',
             headers=dict(Authorization="Bearer " + jwt_token),
             data=self.category)
-        result = self.client().post('api/v1/category/1/recipes',
-                                    headers=dict(Authorization="Bearer " + jwt_token),
-                                    data={'name': 'new', 'time': 'new', 'ingredients': 'new', 'procedure': 'new'})
-
-        self.assertEqual(result.status_code, 201)
-        self.assertIn('Recipe added successfully', str(result.data))
-
+        self.client().post('api/v1/category/1/recipes',
+                           headers=dict(Authorization="Bearer " + jwt_token),
+                           data={'name': 'new', 'time': 'new', 'ingredients': 'new', 'procedure': 'new'})
         # edit recipe
         result = self.client().put(
             'api/v1/category/1/recipes/2',

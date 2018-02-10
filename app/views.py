@@ -104,8 +104,8 @@ class UserRegistration(Resource):
                     return response
 
                 regex = r"(^[a-zA-Z0-9_.]+@[a-zA-Z0-9-]+\.[a-z]+$)"
-                if re.match(regex, email):
-                    if username and password:
+                if username and password:
+                    if re.match(regex, email):
 
                         if INVALID_CHAR.search(username):
                             response = jsonify({
@@ -132,14 +132,16 @@ class UserRegistration(Resource):
                         response.status_code = 201
                         return response
                     else:
+
                         response = jsonify({
-                            "message": "Please fill all fields",
+                            "message": "Please enter a valid email address",
                             "status": "error"
                         })
+
                         response.status_code = 400
                         return response
                 response = jsonify({
-                    "message": "Please enter a valid email address",
+                    "message": "Please fill all fields",
                     "status": "error"
                 })
                 response.status_code = 400
@@ -256,7 +258,7 @@ class ResetPasswordView(Resource):
             if user:
                 token = s.dumps(email, salt='password-reset')
                 recipients.append(email)
-                _link = url_for('auth_new_password_view', token=token, _external=True)
+                _link = url_for('copy this token', token=token, _external=True)
 
                 email_notification('Confirm email', recipients, _link)
 
