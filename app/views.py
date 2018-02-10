@@ -258,7 +258,7 @@ class ResetPasswordView(Resource):
             if user:
                 token = s.dumps(email, salt='password-reset')
                 recipients.append(email)
-                _link = url_for('auth_new_password_view ', token=token, _external=True)
+                _link = url_for('auth_new_password_view', token=token, _external=True)
 
                 email_notification('Reset password', recipients, _link)
 
