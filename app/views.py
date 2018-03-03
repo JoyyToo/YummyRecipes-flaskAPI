@@ -298,34 +298,31 @@ class NewPasswordView(Resource):
         data = new_parser.parse_args()
         password = data['new password']
 
-        try:
-            email = s.loads(token, salt='password-reset', max_age=60 * 10)  # 24hrs
-            user = Users.query.filter_by(email=email).first()
+        email = s.loads(token, salt='password-reset', max_age=60 * 10)  # 24hrs
+        user = Users.query.filter_by(email=email).first()
 
-            if user:
-                if len(password) < 6:
-                    response = jsonify({
-                        "message": "Password must be more than 6 characters.",
-                        "status": "error"})
-                    response.status_code = 400
-                    return response
-                user.password = Bcrypt().generate_password_hash(password).decode()
-                user.save()
+        if user:
+            if len(password) < 6:
                 response = jsonify({
-                    "message": "Password for {} has been reset. You can now login".format(email, password),
-                    "status": "success"
-                })
-                response.status_code = 200
+                    "message": "Password must be more than 6 characters.",
+                    "status": "error"})
+                response.status_code = 400
                 return response
-
+            user.password = Bcrypt().generate_password_hash(password).decode()
+            user.save()
             response = jsonify({
-                "message": "Invalid user",
-                "status": "error"
+                "message": "Password for {} has been reset. You can now login".format(email, password),
+                "status": "success"
             })
             response.status_code = 200
             return response
-        except Exception as e:
-            return 'You are not allowed to do this operation'
+
+        response = jsonify({
+            "message": "Invalid user",
+            "status": "error"
+        })
+        response.status_code = 200
+        return response
 
 
 category_get_parser = api.parser()
