@@ -286,7 +286,7 @@ class ResetPasswordView(Resource):
 
 
 new_parser = api.parser()
-new_parser.add_argument('new password', type=str, help='New password', location='form')
+new_parser.add_argument('newpassword', type=str, help='New password', location='form')
 
 
 @auth_namespace.route('/new-password/<token>')
@@ -296,7 +296,7 @@ class NewPasswordView(Resource):
     def post(self, token):
         """Handles POST request for /auth/new-password/<token>"""
         data = new_parser.parse_args()
-        password = data['new password']
+        password = data['newpassword']
 
         try:
             email = s.loads(token, salt='password-reset', max_age=60 * 10)  # 24hrs
