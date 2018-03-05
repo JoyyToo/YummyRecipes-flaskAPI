@@ -286,21 +286,6 @@ class CategoriesTestCase(BaseTestCase):
         self.assertEqual(result.status_code, 400)
         self.assertIn('Page number must be a positive integer!! ', str(result.data))
 
-    def test_non_existing_page_number(self):
-        """Test if api can take a non existing  page number"""
-        result = self.authenticate()
-        self.create_category()
-
-        jwt_token = json.loads(result.data.decode())['jwt_token']
-
-        json.loads(result.data.decode())
-
-        result = self.client().get(
-            'api/v1/category?limit=1&page=7',
-            headers=dict(Authorization="Bearer " + jwt_token), data=self.category
-        )
-        self.assertEqual(result.status_code, 404)
-
     def test_correct_limit(self):
         """Test if api can take correct limit"""
         result = self.authenticate()

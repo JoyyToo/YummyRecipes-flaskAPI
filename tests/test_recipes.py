@@ -269,21 +269,6 @@ class RecipesTestCase(BaseTestCase):
         self.assertIn("Name or time or ingredients or procedure cannot be empty", str(result.data))
         self.assertEqual(result.status_code, 400)
 
-    def test_edit_non_existing_recipe(self):
-        """Test category edit non existing recipe"""
-
-        result = self.authenticate()
-
-        jwt_token = json.loads(result.data.decode())['jwt_token']
-
-        # edit non existing category
-        result = self.client().put(
-            'api/v1/category/1/recipes/1',
-            headers=dict(Authorization="Bearer " + jwt_token),
-            )
-        self.assertIn("Category does not exist", str(result.data))
-        self.assertEqual(result.status_code, 404)
-
     def test_edit_recipe_with_category_but_no_recipe(self):
         """edit the recipe with category but no recipe"""
         result = self.authenticate()
@@ -390,18 +375,6 @@ class RecipesTestCase(BaseTestCase):
         self.assertEqual(result.status_code, 400)
         self.assertIn('Page number must be a positive integer!! ', str(result.data))
 
-    def test_non_existent__page_number(self):
-        """Test if api can take non existent page number"""
-        result = self.authenticate()
-        jwt_token = json.loads(result.data.decode())['jwt_token']
-        self.create_category()
-        self.create_recipe()
-
-        result = self.client().get(
-            'api/v1/category/1/recipes?limit=1&page=7',
-            headers=dict(Authorization="Bearer " + jwt_token), data=self.category
-        )
-        self.assertEqual(result.status_code, 404)
 
     def test_correct_limit(self):
         """Test api can take correct limit"""
