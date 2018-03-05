@@ -375,7 +375,6 @@ class RecipesTestCase(BaseTestCase):
         self.assertEqual(result.status_code, 400)
         self.assertIn('Page number must be a positive integer!! ', str(result.data))
 
-
     def test_correct_limit(self):
         """Test api can take correct limit"""
         result = self.authenticate()
