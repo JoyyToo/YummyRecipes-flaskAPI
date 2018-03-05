@@ -263,7 +263,7 @@ class ResetPasswordView(Resource):
                 email_notification('Reset password', recipients, _link)
 
                 response = jsonify({
-                    'message': 'Email sent to : {} <br/>'.format(email),
+                    'message': 'A reset link has been sent to : {} <br/>'.format(email),
                     'status': 'success'
                 })
                 response.status_code = 200
@@ -365,12 +365,6 @@ class UserCategory(Resource):
             limit = 5
 
         if page:
-            usercategories = Categories.get_all(user_id).count()
-            pages = int(usercategories / limit)
-            if page > pages:
-                return {
-                           "message": "Page not found"
-                       }, 404
             try:
                 page = int(page)
                 if page < 1:
@@ -442,6 +436,9 @@ class UserCategory(Resource):
             response = jsonify({'Next Page': recipe_category.next_num,
                                 'Prev Page': recipe_category.prev_num,
                                 'Has next': recipe_category.has_next,
+                                'total items': recipe_category.total,
+                                'current page': recipe_category.page,
+                                'total pages': recipe_category.pages,
                                 'Has previous': recipe_category.has_prev}, recipecategories
                                )
             response.status_code = 200
@@ -692,12 +689,6 @@ class UserRecipe(Resource):
             limit = 5
 
         if page:
-            userrecipes = Categories.get_all(user_id).count()
-            pages = int(userrecipes / limit)
-            if page > pages:
-                return {
-                           "message": "Page not found"
-                       }, 404
             try:
                 page = int(page)
                 if page < 1:
@@ -791,6 +782,9 @@ class UserRecipe(Resource):
             response = jsonify({'Next Page': category_recipes.next_num,
                                 'Prev Page': category_recipes.prev_num,
                                 'Has next': category_recipes.has_next,
+                                'total items': category_recipes.total,
+                                'current page': category_recipes.page,
+                                'total pages': category_recipes.pages,
                                 'Has previous': category_recipes.has_prev}, categoryrecipes)
             response.status_code = 200
             return response
