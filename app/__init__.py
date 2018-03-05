@@ -3,6 +3,7 @@ from flask import Flask
 from flask_restplus import Api, Resource, reqparse
 from flask_sqlalchemy import SQLAlchemy
 from instance.config import app_config
+from app.error_handler import JsonExceptionHandler
 
 app = Flask(__name__)
 
@@ -32,4 +33,6 @@ api = Api(app, version='1.0',
           prefix='/api/v1')
 db = SQLAlchemy(app)
 from . import views
+JsonExceptionHandler(app)
+
 
