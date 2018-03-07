@@ -1,11 +1,13 @@
 import os
 from flask import Flask
+from flask_cors import CORS
 from flask_restplus import Api, Resource, reqparse
 from flask_sqlalchemy import SQLAlchemy
 from instance.config import app_config
 from app.error_handler import JsonExceptionHandler
 
 app = Flask(__name__)
+CORS(app)
 
 CELERY_BROKER_URL = 'redis://localhost:6379',
 CELERY_RESULT_BACKEND = 'redis://localhost:6379'
