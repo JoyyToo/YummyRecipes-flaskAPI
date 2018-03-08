@@ -761,7 +761,7 @@ class UserRecipe(Resource):
             recipe = Recipes.get_all(category_id)
             if not recipe:
                 response = jsonify({
-                    "message": "Recipe not available at the moment",
+                    "message": "Recipe not available at the moment. You can add some.",
                     "status": "error"
                 })
                 response.status_code = 404
