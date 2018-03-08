@@ -150,7 +150,7 @@ class RecipesTestCase(BaseTestCase):
             'api/v1/category/1/recipes/1',
             headers=dict(Authorization="Bearer " + jwt_token),
         )
-        self.assertIn("Recipe not available at the moment", str(result.data))
+        self.assertIn("Recipe not available at the moment. You can add some", str(result.data))
         self.assertEqual(result.status_code, 404)
 
     def test_get_all_non_existing_recipes_with_category(self):
