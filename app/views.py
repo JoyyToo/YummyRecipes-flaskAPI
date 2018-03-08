@@ -1,6 +1,7 @@
 from functools import wraps
 from flask import request, jsonify, url_for
 import re
+import humanize
 from itsdangerous import URLSafeTimedSerializer
 from flask_bcrypt import Bcrypt
 from flask_mail import Mail, Message
@@ -392,8 +393,8 @@ class UserCategory(Resource):
                         "id": category.id,
                         "name": category.name.title(),
                         "desc": category.desc,
-                        "date_created": category.date_created,
-                        "date_modified": category.date_modified,
+                        "date_created": humanize.naturaldate(category.date_created),
+                        "date_modified": humanize.naturaldate(category.date_modified),
                         "user_id": category.user_id
                     }
                     categories.append(obj)
@@ -428,8 +429,8 @@ class UserCategory(Resource):
                     "id": category.id,
                     "name": category.name.title(),
                     "desc": category.desc,
-                    "date_created": category.date_created,
-                    "date_modified": category.date_modified,
+                    "date_created": humanize.naturaldate(category.date_created),
+                    "date_modified": humanize.naturaldate(category.date_modified),
                     "user_id": category.user_id
                 }
                 recipecategories.append(obj)
@@ -486,8 +487,8 @@ class UserCategory(Resource):
                         "id": category.id,
                         "name": category.name.title(),
                         "desc": category.desc,
-                        "date_created": category.date_created,
-                        "date_modified": category.date_modified,
+                        "date_created": humanize.naturaldate(category.date_created),
+                        "date_modified": humanize.naturaldate(category.date_modified),
                         "user_id": category.user_id
                     }
 
@@ -534,8 +535,8 @@ class UserCategories(Resource):
                     "name": category.name.title(),
                     "desc": category.desc,
                     "date_created"
-                    "": category.date_created,
-                    "date_modified": category.date_modified,
+                    "": humanize.naturaldate(category.date_created),
+                    "date_modified": humanize.naturaldate(category.date_modified),
                     "user_id": category.user_id
                 }
                 response = jsonify({
@@ -596,8 +597,8 @@ class UserCategories(Resource):
                         "id": category.id,
                         "name": category.name.title(),
                         "desc": category.desc,
-                        "date_created": category.date_created,
-                        "date_modified": category.date_modified,
+                        "date_created": humanize.naturaldate(category.date_created),
+                        "date_modified": humanize.naturaldate(category.date_modified),
                         "user_id": category.user_id
                     }
                     response = jsonify({
@@ -720,8 +721,8 @@ class UserRecipe(Resource):
                         "ingredients": recipe.ingredients,
                         "procedure": recipe.procedure,
                         "category_id": recipe.category_id,
-                        "date_created": recipe.date_created,
-                        "date_modified": recipe.date_modified,
+                        "date_created": humanize.naturaldate(recipe.date_created),
+                        "date_modified": humanize.naturaldate(recipe.date_modified),
                     }
                     recipes.append(obj)
 
@@ -774,8 +775,8 @@ class UserRecipe(Resource):
                     "ingredients": rec.ingredients,
                     "procedure": rec.procedure,
                     "category_id": rec.category_id,
-                    "date_created": rec.date_created,
-                    "date_modified": rec.date_modified,
+                    "date_created": humanize.naturaldate(rec.date_created),
+                    "date_modified": humanize.naturaldate(rec.date_modified),
                 }
                 categoryrecipes.append(obj)
 
@@ -841,8 +842,8 @@ class UserRecipe(Resource):
                         "ingredients": recipe.ingredients,
                         "procedure": recipe.procedure,
                         "category_id": recipe.category_id,
-                        "date_created": recipe.date_created,
-                        "date_modified": recipe.date_modified,
+                        "date_created": humanize.naturaldate(recipe.date_created),
+                        "date_modified": humanize.naturaldate(recipe.date_modified),
 
                     }
                     response = jsonify({
@@ -907,8 +908,8 @@ class UserRecipes(Resource):
                 "ingredients": recipe.ingredients,
                 "procedure": recipe.procedure,
                 "category_id": recipe.category_id,
-                "date_created": recipe.date_created,
-                "date_modified": recipe.date_modified,
+                "date_created": humanize.naturaldate(recipe.date_created),
+                "date_modified": humanize.naturaldate(recipe.date_modified),
             }
             response = jsonify({
                 "recipes": obj,
@@ -980,8 +981,8 @@ class UserRecipes(Resource):
                         "ingredients": recipe.ingredients,
                         "procedure": recipe.procedure,
                         "category_id": recipe.category_id,
-                        "date_created": recipe.date_created,
-                        "date_modified": recipe.date_modified,
+                        "date_created": humanize.naturaldate(recipe.date_created),
+                        "date_modified": humanize.naturaldate(recipe.date_modified),
                     }
                     response = jsonify({
                         "message": "Recipe updated successfully",
