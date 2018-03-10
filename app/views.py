@@ -334,7 +334,7 @@ category_parser = api.parser()
 
 category_get_parser.add_argument('q', type=str, help='Search')
 category_get_parser.add_argument('page', type=int, help='Page number, default=1')
-category_get_parser.add_argument('limit', type=int, help='Limit per page, default=5')
+category_get_parser.add_argument('limit', type=int, help='Limit per page, default=6')
 category_parser.add_argument('name', type=str, help='Category name', location='form', required=True)
 category_parser.add_argument('desc', type=str, help='Category Description', location='form', required=True)
 
@@ -363,7 +363,7 @@ class UserCategory(Resource):
                            "message": "Invalid limit value!!"
                        }, 400
         else:
-            limit = 5
+            limit = 6
 
         if page:
             try:
@@ -648,7 +648,7 @@ recipe_parser = api.parser()
 recipe_get_parser = api.parser()
 recipe_get_parser.add_argument('q', type=str, help='Search')
 recipe_get_parser.add_argument('page', type=int, help='Page number, default=1')
-recipe_get_parser.add_argument('limit', type=int, help='Limit per page, default=5')
+recipe_get_parser.add_argument('limit', type=int, help='Limit per page, default=6')
 recipe_parser.add_argument('name', type=str, help='Recipe name', location='form', required=True)
 recipe_parser.add_argument('time', type=str, help='Expected time', location='form', required=True)
 recipe_parser.add_argument('ingredients', type=str, help='Ingredients', location='form', required=True)
@@ -687,7 +687,7 @@ class UserRecipe(Resource):
                            "message": "Invalid limit value!!"
                        }, 400
         else:
-            limit = 5
+            limit = 6
 
         if page:
             try:
