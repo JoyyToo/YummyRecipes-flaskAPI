@@ -1,6 +1,7 @@
 from functools import wraps
 from flask import request, jsonify, url_for
 import re
+from sqlalchemy import desc, asc
 import humanize
 from itsdangerous import URLSafeTimedSerializer
 from flask_bcrypt import Bcrypt
@@ -740,7 +741,8 @@ class UserRecipe(Resource):
                 response.status_code = 404
                 return response
         try:
-            category_recipes = Recipes.query.filter_by(category_id=category_id).paginate(page, limit, error_out=True)
+            category_recipes = Recipes.query.filter_by(category_id=category_id).order_by(desc(Recipes.date_created)).\
+                paginate(page, limit, error_out=True)
         except Exception as e:
             response = jsonify({
                 "message": str(e).split(".")[0] + '.',
