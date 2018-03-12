@@ -414,7 +414,7 @@ class UserCategory(Resource):
                 return response
 
         try:
-            recipe_category = Categories.query.filter_by(user_id=user_id).order_by(desc(Recipes.date_created)).\
+            recipe_category = Categories.query.filter_by(user_id=user_id).order_by(desc(Categories.date_created)).\
                 paginate(page, limit, error_out=True)
         except Exception as e:
             response = jsonify({
