@@ -12,6 +12,13 @@ class Config(object):
     # Flask-RESTPlus Config
     SWAGGER_UI_DOC_EXPANSION = 'list'
 
+    MAIL_SERVER = 'smtp.gmail.com'
+    MAIL_PORT = 587
+    MAIL_USE_SSL = False
+    MAIL_USE_TLS = True
+    MAIL_USERNAME = os.getenv('MAIL_USERNAME')
+    MAIL_PASSWORD = os.getenv('MAIL_PASSWORD')
+
 
 class ProductionConfig(Config):
     DEBUG = False

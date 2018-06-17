@@ -2,6 +2,9 @@ import jwt
 from datetime import datetime, timedelta
 from app import db, app
 from flask_bcrypt import Bcrypt
+import re
+
+INVALID_CHAR = re.compile(r"[<>/{}[\]~`*!@#$%^&()=+]")
 
 
 class Users(db.Model):
@@ -10,8 +13,8 @@ class Users(db.Model):
     __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(256), nullable=False, unique=True)
-    username = db.Column(db.String(256), nullable=False)
+    email = db.Column(db.String(40), nullable=False, unique=True)
+    username = db.Column(db.String(40), nullable=False)
     password = db.Column(db.String(256), nullable=False)
     categories = db.relationship(
         'Categories', order_by='Categories.id', cascade='all, delete-orphan')
@@ -31,7 +34,8 @@ class Users(db.Model):
         db.session.add(self)
         db.session.commit()
 
-    def generate_token(self, user_id):
+    @staticmethod
+    def generate_token(user_id):
         """Generates access token for a user"""
         try:
             # set up a payload with an expiration time
@@ -68,25 +72,18 @@ class Users(db.Model):
             return payload['sub']
         except jwt.ExpiredSignatureError:
             # token is valid but expired
-            return {
-                       "message": "Expired token. Please login to get a new token",
-                       "status": "error"
-                   }, 403
+            return "expired"
+
         except jwt.InvalidTokenError:
-            # token is invalid
-            return {
-                       "message": "Invalid token. Please register or login",
-                       "status": "error"
-                   }, 403
+            return 'invalid'
 
 
 class Categories(db.Model):
     """This class defines Categories tables."""
 
     __tablename__ = 'categories'
-
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255))
+    name = db.Column(db.String(30))
     desc = db.Column(db.String(255))
     date_created = db.Column(db.DateTime, default=db.func.current_timestamp())
     date_modified = db.Column(
@@ -98,7 +95,7 @@ class Categories(db.Model):
 
     def __init__(self, name, desc, user_id):
         """Initialize Categories with name, desc and user_id"""
-        self.name = name
+        self.name = self.name or name
         self.desc = desc
         self.user_id = user_id
 
@@ -121,14 +118,21 @@ class Categories(db.Model):
         return Categories.query.filter_by(user_id=user_id)
 
     @staticmethod
-    def get_single(id):
+    def get_single(_id):
         """Returns all available Categories for a given user."""
-        return Categories.query.filter_by(id=id).first()
+        return Categories.query.filter_by(id=_id).first()
 
     def delete(self):
         """Deletes a given Category"""
         db.session.delete(self)
         db.session.commit()
+
+    @staticmethod
+    def validate_input(**kwargs):
+        if kwargs:
+            for key in kwargs:
+                if INVALID_CHAR.search(kwargs[key]):
+                    return key
 
     def __repr__(self):
         """Returns a representation of a Category."""
@@ -141,24 +145,26 @@ class Recipes(db.Model):
     __tablename__ = "recipes"
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(256))
-    time = db.Column(db.String(256))
+    name = db.Column(db.String(30))
+    time = db.Column(db.String(30))
     ingredients = db.Column(db.String(256))
-    direction = db.Column(db.String(256))
+    procedure = db.Column(db.String(256))
     category_id = db.Column(db.Integer, db.ForeignKey(Categories.id))
+    user_id = db.Column(db.Integer, db.ForeignKey(Users.id))
     date_created = db.Column(db.DateTime, default=db.func.current_timestamp())
     date_modified = db.Column(
         db.DateTime, default=db.func.current_timestamp(),
         onupdate=db.func.current_timestamp())
 
-    def __init__(self, name, time, ingredients, direction, category_id):
-        """Initialize Recipes with name, time, ingredient, direction, category_id"""
+    def __init__(self, name, time, ingredients, procedure, category_id, user_id):
+        """Initialize Recipes with name, time, ingredient, procedure, category_id"""
 
         self.name = name
         self.time = time
         self.ingredients = ingredients
-        self.direction = direction
+        self.procedure = procedure
         self.category_id = category_id
+        self.user_id = user_id
 
     def save(self):
         """Saves Recipes to the database"""
@@ -166,13 +172,13 @@ class Recipes(db.Model):
         db.session.commit()
 
     @staticmethod
-    def update(name, time, ingredients, direction, _id):
+    def update(name, time, ingredients, procedure, _id):
         """Updates an existing recipe"""
         recipe = Recipes.query.filter_by(id=_id).first()
         recipe.name = name
         recipe.time = time
         recipe.ingredients = ingredients
-        recipe.direction = direction
+        recipe.procedure = procedure
         recipe.save()
         return recipe
 
@@ -195,45 +201,17 @@ class Recipes(db.Model):
         return "<Recipe: {}>".format(self.id)
 
 
-class Sessions(db.Model):
-    """This class defines the session table"""
+class Blacklist(db.Model):
+    """ Model for blacklisted tokens"""
+    __tablename__ = "blacklist"
 
-    __tablename__ = "user_sessions"
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, unique=True)
-    is_logged_in = db.Column(db.Boolean, default=False)
-
-    def __init__(self, user_id):
-        self.user_id = user_id
+    token_id = db.Column(db.Integer, unique=True,
+                         primary_key=True, autoincrement=True)
+    revoked_token = db.Column(db.String(500), nullable=False)
 
     def save(self):
         db.session.add(self)
         db.session.commit()
 
-    @staticmethod
-    def login(user_id):
-        session = Sessions.query.filter_by(user_id=user_id).first()
-        if session:
-            session.is_logged_in = True
-            session.save()
-            return True
-        return False
-
-    @staticmethod
-    def logout(user_id):
-        session = Sessions.query.filter_by(user_id=user_id).first()
-        if session:
-            session.is_logged_in = False
-            session.save()
-            return True
-        return False
-
-    @staticmethod
-    def login_status(user_id):
-        session = Sessions.query.filter_by(user_id=user_id).first()
-        if session:
-            status = session.is_logged_in
-            return status
-
-        return False
-
+    def __repr__(self):
+        return "<Revoked token: {}".format(self.revoked_tokens)

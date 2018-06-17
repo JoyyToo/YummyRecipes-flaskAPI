@@ -34,6 +34,20 @@ Response Headers
 
 Python 2.6 or a later version
 
+## Virtual environment
+Create virtual environment:
+
+```
+$ sudo pip install virtualenv
+$ virtualenv venv
+```
+
+Activate virtual environment:
+
+```
+$ source .venv/bin/activate
+```
+
 ## Dependencies
 Install all package requirements in your python virtual environment.
 ```
@@ -41,13 +55,6 @@ pip install -r requirements.txt
 ```
 ## Env
 Rename .env.sample into .env
-
-## Virtual environment
-Activate virtual environment:
-
-```
-$ source .venv/bin/activate
-```
 
 ## Testing
 To set up unit testing environment:
@@ -112,20 +119,23 @@ http://127.0.0.1:5000/category?q=example
 | url | Method|  Description| Authentication |
 | --- | --- | --- | --- |
 | /register | POST | Registers new user | FALSE
-| /login | POST | Handles POST request for /auth/login | TRUE
-| /logout | GET | Logs out a user | TRUE
-| /reset-password | POST | Reset user password | TRUE
+| /login | POST | Handles POST request for /auth/login | FALSE
+| /logout | POST | Logs out a user | TRUE
+| /reset-password | POST | Reset user password | FALSE
+| /new-password/<token>| POST | Enter new password | FALSE
 | /category | GET | Get every category of logged in user|TRUE
-| /category/{_id} | GET | Get category with {id} of logged in user|TRUE
+| /category/{category_id} | GET | Get a single category|TRUE
 | /category | POST | Create a new category|TRUE
-| /category/{_id}  | PUT | Update a category with {id} of logged in user|TRUE
-| /category/{_id} | DELETE | Delete category with {id} of logged in user|TRUE
-| /recipe | POST | Creates a recipe|TRUE
-| /recipes/{id} | GET | Gets a single recipe|TRUE
-| /recipe/{id} | PUT | Updates a single recipe|TRUE
-| /recipe/{id} | DELETE | Deletes a single recipe|TRUE
+| /category/{category_id}  | PUT | Update a single category|TRUE
+| /category/{category_id} | DELETE | Delete a single category|TRUE
+| /category/{category_id}/recipes | POST | Creates a recipe|TRUE
+| /category/{category_id}/recipes/{_id} | GET | Gets a single recipe|TRUE
+| /category/{category_id}/recipes/{_id} | PUT | Updates a single recipe|TRUE
+| /category/{category_id}/recipes/{_id} | DELETE | Deletes a single recipe|TRUE
 
 
 ### Testing and API documentation
+
+You can test using postman
 
 [https://yummy-recipe-flaskapi.herokuapp.com/](https://yummy-recipe-flaskapi.herokuapp.com/)
